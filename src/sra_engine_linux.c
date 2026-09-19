@@ -38,7 +38,8 @@ static void cb_error(SraCore *sra, int code, void *userdata) {
 /* ------------------------------------------------------------------ */
 
 /* Accumulates raw MIDI bytes into complete messages, then calls
-   midi_in_process under the engine mutex.                             */
+   midi_in_process under the engine mutex.  Complete SysEx messages
+   are forwarded to sracore_sysex_in (also under the mutex).           */
 #define SRA_SYSEX_MAX 256
 
 static void *midi_in_thread_func(void *arg) {

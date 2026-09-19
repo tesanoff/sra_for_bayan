@@ -87,8 +87,11 @@ void sra_append(SraCore *sra, SRABYTE b) {
 /* MIDI input                                                           */
 /* ------------------------------------------------------------------ */
 
-/* Decode one incoming keyboard MIDI message, route it through the
-   arranger.  raw_status channel bits are replaced with key_ch. */
+/* Decode one incoming MIDI message and route it through the arranger.
+   Messages on arranger-owned channels (ACCBASS, ACC1..ACC4, MBASS,
+   DRUM, LOWER) are ignored.  Notes on the chord channel are analysed
+   as chords when the arranger is active, and forwarded otherwise.
+   All remaining messages are forwarded on their original channel. */
 void sracore_midi_in(SraCore *sra,
                      SRABYTE raw_status, SRABYTE data1, SRABYTE data2) {
     SRABYTE msg2  = raw_status & (SRABYTE)0xf0;

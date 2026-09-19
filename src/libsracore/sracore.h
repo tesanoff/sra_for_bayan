@@ -58,10 +58,12 @@ void     sracore_destroy(SraCore *sra);
 void     sracore_set_offset(SraCore *sra, int offset);
 
 /* Set the MIDI channel (0-15) reserved for chord input.
-   Notes arriving on this channel are always analysed as chords,
-   regardless of pitch.  Notes on other channels are always treated
-   as melody and forwarded to the main key channel.
-   Pass -1 to restore the legacy "any channel, by pitch" behaviour. */
+   Notes arriving on this channel are analysed as chords (when the
+   arranger is active) and otherwise forwarded on the same channel.
+   Notes on all other channels are always forwarded as melody on
+   their original channel.
+   -1 restores the legacy "any channel, by pitch" behaviour; it is
+   intended for internal use only, not exposed via UI or SysEx. */
 void     sracore_set_chord_channel(SraCore *sra, int chord_ch);
 
 /* Install all four callbacks at once. */
@@ -69,7 +71,7 @@ void     sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb);
 
 /* Load the default style (style0.mid) and reset all engine state.
    Calls on_error and does not return on failure.
-   sracore_set_channel() and sracore_set_callbacks() must be called first. */
+   sracore_set_offset() and sracore_set_callbacks() must be called first. */
 void     sracore_init(SraCore *sra);
 
 /* ------------------------------------------------------------------ */
@@ -86,7 +88,10 @@ void sracore_step(SraCore *sra);
 /* ------------------------------------------------------------------ */
 
 /* Feed one decoded MIDI message from the keyboard into the engine.
-   raw_status: status byte as received (channel bits will be replaced).
+   raw_status: status byte as received (the channel bits are preserved;
+               messages on arranger-owned channels are ignored, messages
+               on the chord channel are analysed as chords, everything
+               else is forwarded on its original channel).
    data1, data2: data bytes (data2 ignored for single-data messages). */
 void sracore_midi_in(SraCore *sra,
                      SRABYTE raw_status, SRABYTE data1, SRABYTE data2);

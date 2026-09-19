@@ -53,8 +53,8 @@
 #define CMD_COMMANDD    92
 #define CMD_SHCOMMANDD  84
 #define CMD_UPPERD      60
-#define CMD_INCPATCH    23
-#define CMD_DECPATCH    21
+/* CMD_INCPATCH / CMD_DECPATCH (23 / 21) removed together with the
+   Patch +/- feature; note numbers 21 and 23 are now ordinary keys. */
 
 /* ------------------------------------------------------------------ */
 /* Chord type identifiers (index into CHORD_TABLE in sracore_chord.c)   */
@@ -75,7 +75,7 @@ typedef enum {
 /* ------------------------------------------------------------------ */
 struct SraCore {
     /* MIDI channel routing */
-    int  chord_ch;              /* channel reserved for chord input, -1 = legacy */
+    int  chord_ch;              /* chord-input channel 0..15, or -1 for legacy */
     int  offset, offset2, offset3, offset4;
 
     /* Key tracking for chord detection */

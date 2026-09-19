@@ -91,7 +91,9 @@ void sra_prog_change(SraCore *sra, SRABYTE ch) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Reset: send initialisation messages to all MIDI channels             */
+/* Reset: send initialisation messages to arranger-owned channels only  */
+/* (ACCBASS, ACC1..ACC4, MBASS, DRUM, LOWER).  Channels used for live    */
+/* playing are left untouched.                                          */
 /* ------------------------------------------------------------------ */
 
 void sra_reset(SraCore *sra, int full) {

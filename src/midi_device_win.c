@@ -29,7 +29,8 @@ void midi_device_select_out(MidiDevice *dev, int delta) {
     }
 }
 
-/* platform_ctx must be an HWND — the window that receives MM_MIM_DATA. */
+/* platform_ctx must be an HWND — the window that receives MM_MIM_DATA
+   (and, when SysEx input is supported, MM_MIM_LONGDATA). */
 int midi_device_open(MidiDevice *dev, void *platform_ctx) {
     HWND hwnd = (HWND)platform_ctx;
     if (midiInOpen(&dev->h_in, dev->in_index,

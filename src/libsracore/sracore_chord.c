@@ -173,9 +173,11 @@ void sra_check_chord(SraCore *sra, int vel) {
 }
 
 /* ------------------------------------------------------------------ */
-/* CheckKeyOn — process note-on from keyboard                           */
-/* The note and velocity are read back from the queue (two bytes ago)   */
-/* because that's where sracore_midi_in() put them.                    */
+/* CheckKeyOn — legacy note-on path (chord_ch < 0 only)                 */
+/*                                                                      */
+/* Only used when the engine runs in the legacy "any channel, by        */
+/* pitch" mode.  With the default chord-channel routing this function   */
+/* is never called: sracore_midi_in() performs chord detection itself.  */
 /* ------------------------------------------------------------------ */
 
 void sra_check_key_on(SraCore *sra) {
@@ -263,7 +265,6 @@ void sra_check_key_off(SraCore *sra) {
 /* ------------------------------------------------------------------ */
 
 void sra_make_chord(SraCore *sra) {
-    SRABYTE *k = sra->key_on[0]; /* shorthand for key_on[][0] */
     if (!sra->chord_change) return;
 
 #define K(i) sra->key_on[i][0]

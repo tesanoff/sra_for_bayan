@@ -53,9 +53,9 @@ SraCore *sracore_create(void);
 /* Free all resources including the style buffer. */
 void     sracore_destroy(SraCore *sra);
 
-/* Set MIDI channel (0-15) and semitone transposition offset.
+/* Set semitone transposition offset.
    Must be called before sracore_init(). */
-void     sracore_set_channel(SraCore *sra, int channel, int offset);
+void     sracore_set_offset(SraCore *sra, int offset);
 
 /* Set the MIDI channel (0-15) reserved for chord input.
    Notes arriving on this channel are always analysed as chords,

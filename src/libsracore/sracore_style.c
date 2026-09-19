@@ -119,11 +119,6 @@ void sra_reset(SraCore *sra, int full) {
             {ACC3,    127, 60 }, {ACC4,    127, 60 },
             {ACCBASS, 127, 40 }, {DRUM,    127, 70 },
         };
-        SRABYTE kch = (SRABYTE)sra->key_ch;
-        sra_append(sra, 0xb0 | kch); sra_append(sra, 0x0b); sra_append(sra, 127);
-        sra_append(sra, 0xb0 | kch); sra_append(sra, 91);   sra_append(sra, 90);
-        sra_append(sra, 0xb0 | kch); sra_append(sra, 0x07); sra_append(sra, 127);
-
         for (i = 0; i < 8; i++) {
             sra_append(sra, 0xb0 | PARTS[i].ch);
             sra_append(sra, 0x0b);

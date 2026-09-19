@@ -30,8 +30,7 @@ void sracore_destroy(SraCore *sra) {
     free(sra);
 }
 
-void sracore_set_channel(SraCore *sra, int channel, int offset) {
-    sra->key_ch = channel;
+void sracore_set_offset(SraCore *sra, int offset) {
     sra->offset = offset;
 }
 
@@ -93,22 +92,39 @@ void sra_append(SraCore *sra, SRABYTE b) {
 void sracore_midi_in(SraCore *sra,
                      SRABYTE raw_status, SRABYTE data1, SRABYTE data2) {
     SRABYTE msg2  = raw_status & (SRABYTE)0xf0;
-    SRABYTE msg   = msg2 | (SRABYTE)sra->key_ch;
+    SRABYTE in_ch = raw_status & (SRABYTE)0x0f;
+    SRABYTE msg   = msg2 | in_ch;
     SRABYTE msg3  = 0xFF; /* 0xFF = "no key event this message" */
+
+    /* Channels reserved for arranger accompaniment: ignore all input
+       messages on them, to avoid clashes with the generated parts. */
+    switch (in_ch) {
+    case ACCBASS:
+    case ACC1:
+    case ACC2:
+    case ACC3:
+    case ACC4:
+    case MBASS:
+    case DRUM:
+    case LOWER:
+        return;
+    default:
+        break;
+    }
 
     switch (msg2) {
     case 0x80:
-        /* Note-off: convert to note-on vel=0 on key_ch */
+        /* Note-off: convert to note-on vel=0, keep the source channel. */
         msg3 = 0x00;
-        msg  = 0x90 | (SRABYTE)sra->key_ch;
+        msg  = 0x90 | in_ch;
         sra_append(sra, msg);
-        sra_append(sra, data1 + sra->offset3 + sra->offset4);
+        sra_append(sra, (SRABYTE)(data1 + sra->offset3 + sra->offset4));
         sra_append(sra, msg3);
         break;
     case 0x90:
         msg3 = data2;
         sra_append(sra, msg);
-        sra_append(sra, data1 + sra->offset3 + sra->offset4);
+        sra_append(sra, (SRABYTE)(data1 + sra->offset3 + sra->offset4));
         sra_append(sra, msg3);
         break;
     case 0xb0:
@@ -125,37 +141,20 @@ void sracore_midi_in(SraCore *sra,
         break;
     }
 
-    /* After 0x80 conversion, msg became 0x90|key_ch, so both
-       note-on and note-off enter the chord detection path. */
-    sra->msg = msg;
-    if (msg == (SRABYTE)(0x90 | sra->key_ch) && msg3 != 0xFF) {
-        /* key_v is the velocity the chord functions will store */
-        sra->key_v = msg3;
+    /* Chord handling: only for note events on the chord channel. */
+    if (msg2 == 0x80 || msg2 == 0x90) {
+        SRABYTE vel = (msg2 == 0x80) ? 0x00 : data2;
+        if (in_ch != (SRABYTE)sra->chord_ch) return;
 
-        /* Decide chord vs melody by source channel when chord_ch is set,
-           otherwise fall back to the legacy "by pitch" behaviour. */
-        if (sra->chord_ch >= 0) {
-            int in_ch = raw_status & 0x0f;
-            if (in_ch == sra->chord_ch) {
-                /* Chord channel: suppress the note in the output queue
-                   (velocity = 0) and feed the chord detector.
-                   Match the legacy behaviour of sra_check_key_on/_off:
-                   use the offset-adjusted note number, and only process
-                   when the arranger is active.
-                   TODO: revisit whether to always recognise chords. */
-                sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
-                sra->msg = (SRABYTE)(data1 + sra->offset3 + sra->offset4);
-                if (sra->mode || sra->start_f || sra->sync_f) {
-                    sra_check_chord(sra, sra->key_v);
-                }
-            }
-            /* else: melody.  The note is already in the queue with its
-               original velocity; nothing else to do here. */
-        } else {
-            /* legacy: dispatch by pitch, as before */
-            if (msg3) sra_check_key_on(sra);
-            else      sra_check_key_off(sra);
+        sra->key_v = vel;
+        if (sra->mode || sra->start_f || sra->sync_f) {
+            /* Arranger active: analyse chord, do not forward it.
+               Suppress the note we just pushed into the output queue. */
+            sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
+            sra->msg = (SRABYTE)(data1 + sra->offset3 + sra->offset4);
+            sra_check_chord(sra, vel);
         }
+        /* else: arranger idle - note is forwarded as melody/chord echo. */
     }
 }
 

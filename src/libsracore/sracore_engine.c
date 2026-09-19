@@ -288,8 +288,6 @@ void sra_check_com(SraCore *sra) {
 static void emit_volume_all(SraCore *sra, SRABYTE vol) {
     static const SRABYTE CH[] = {LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACCBASS, DRUM};
     int i;
-    sra_append(sra, 0xb0 | (SRABYTE)sra->key_ch);
-    sra_append(sra, 0x0b); sra_append(sra, vol);
     if (!sra->voice_lock) {
         sra_append(sra, 0xb0 | LOWER); sra_append(sra, 0x0b); sra_append(sra, vol);
     }

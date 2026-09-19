@@ -197,20 +197,7 @@ void sra_check_key_on(SraCore *sra) {
             return;
         }
 
-        if (note == (SRABYTE)(CMD_INCPATCH + sra->offset3 + sra->offset4)) {
-            /* suppress velocity in queue, change patch */
-            sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
-            if (sra->patch != 127) sra->patch++;
-            sra_append(sra, 0xc0 | sra->key_ch);
-            sra_append(sra, sra->patch);
-
-        } else if (note == (SRABYTE)(CMD_DECPATCH + sra->offset3 + sra->offset4)) {
-            sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
-            if (sra->patch != 0) sra->patch--;
-            sra_append(sra, 0xc0 | sra->key_ch);
-            sra_append(sra, sra->patch);
-
-        } else if (note <= (SRABYTE)(CMD_COMMANDU + sra->offset) &&
+        if (note <= (SRABYTE)(CMD_COMMANDU + sra->offset) &&
                    note >= (SRABYTE)(CMD_COMMANDD + sra->offset)) {
             sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
             sra_check_com(sra);

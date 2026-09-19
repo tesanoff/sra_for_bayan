@@ -54,11 +54,9 @@ int main(void) {
     ui_init(&g_ui);
     engine_init(&g_engine, &g_midi, NULL);
 
-    /* Defaults for interactive setup.  SRA sends accompaniment and melody
-       on channels 6..15 (1-based: 7..16); channels 0..5 (1-based: 1..6)
-       are left free.  chord_channel is an input-only channel and is not
-       affected by this reservation. */
-    g_app.melody_channel = 6;   /* channel 7 (1-based) for melody */
+    /* Defaults for interactive setup.  SRA sends accompaniment on
+       channels 7..14 (1-based: 8..15); the chord channel is input-only
+       and is not affected by this reservation. */
     g_app.chord_channel  = 2;   /* channel 3 (1-based) for chords */
 
     if (g_midi.in_count > 0 && g_midi.out_count > 0)
@@ -88,7 +86,6 @@ int main(void) {
             printf("\n\nRunning. Press Enter to quit.\n");
             fflush(stdout);
             engine_start(&g_engine,
-                         g_app.melody_channel,
                          12 * g_app.ctrl_offset,
                          g_app.chord_channel);
             g_app.status = 3;

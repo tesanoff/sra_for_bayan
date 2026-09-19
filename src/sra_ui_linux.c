@@ -52,7 +52,6 @@ void ui_print_state(AppUI *ui, MidiDevice *dev, AppState *app) {
             printf("         %s\n",
                    dev->out_ports[dev->out_index].name);
 
-        printf("  [W/X] Channel : %d\n", app->melody_channel + 1);
         printf("  [A/D] Chord Ch: %d\n", app->chord_channel + 1);
         printf("  [O]   Ctrl Offset: %d\n\n", app->ctrl_offset);
 
@@ -94,8 +93,6 @@ int ui_on_keydown(AppUI *ui, MidiDevice *dev, unsigned int ch,
     case 'z': midi_device_select_in (dev, -1); break;
     case 'e': midi_device_select_out(dev, +1); break;
     case 'c': midi_device_select_out(dev, -1); break;
-    case 'w': if (app->melody_channel < 15) app->melody_channel++; break;
-    case 'x': if (app->melody_channel > 0)  app->melody_channel--; break;
     case 'a': if (app->chord_channel  < 15) app->chord_channel++;  break;
     case 'd': if (app->chord_channel  > 0)  app->chord_channel--;  break;
     case 'o':

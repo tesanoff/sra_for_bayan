@@ -21,14 +21,17 @@
 /* ------------------------------------------------------------------ */
 /* MIDI channel assignments used by the arranger                        */
 /* ------------------------------------------------------------------ */
-#define LOWER    0x0f
+/* Output channels reserved for arranger accompaniment.
+   Channels 0..6 and 15 are left free for live playing;
+   DRUM stays on the GM drum channel 9 (1-based 10). */
+#define LOWER    0x0e
 #define MBASS    0x0d
-#define ACC1     0x09
+#define ACC1     0x08
 #define ACC2     0x0a
 #define ACC3     0x0b
 #define ACC4     0x0c
 #define ACCBASS  0x07
-#define DRUM     0x0e
+#define DRUM     0x09
 
 /* ------------------------------------------------------------------ */
 /* Control command note numbers (relative to sra->offset)               */
@@ -72,7 +75,6 @@ typedef enum {
 /* ------------------------------------------------------------------ */
 struct SraCore {
     /* MIDI channel routing */
-    int  key_ch;
     int  chord_ch;              /* channel reserved for chord input, -1 = legacy */
     int  offset, offset2, offset3, offset4;
 

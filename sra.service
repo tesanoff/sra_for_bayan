@@ -1,0 +1,35 @@
+# Example systemd unit for SRA daemon mode.
+#
+# Install:
+#   sudo cp sra.service /etc/systemd/system/
+#   sudo mkdir -p /etc/sra
+#   sudo cp sra.conf.example /etc/sra/sra.conf     # then edit
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sra
+#
+# View logs:
+#   journalctl -u sra -f
+
+[Unit]
+Description=Software-based Real-time Arranger
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/sra --daemon --config /etc/sra/sra.conf
+Restart=on-failure
+RestartSec=2
+
+# The daemon needs access to /dev/snd/*.  If your distribution has an
+# 'audio' group, run as a user in it.  Otherwise, run as root (not
+# recommended) or adjust permissions on the rawmidi device.
+# User=alexander
+# Group=audio
+
+# Uncomment for a more verbose journal (SRA itself logs very little):
+# StandardError=journal
+# StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

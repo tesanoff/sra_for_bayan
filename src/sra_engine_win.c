@@ -52,8 +52,9 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx) {
     InitializeCriticalSection(&eng->cs);
 }
 
-void engine_start(SraEngine *eng, int key_ch, int offset) {
+void engine_start(SraEngine *eng, int key_ch, int offset, int silent) {
     SraCallbacks cb;
+    (void)silent;   /* Windows path does not use silent yet */
     QueryPerformanceFrequency(&eng->freq);
 
     cb.on_chord  = cb_chord;

@@ -183,10 +183,10 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx) {
     pthread_mutex_init(&eng->cs, NULL);
 }
 
-void engine_start(SraEngine *eng, int offset, int chord_ch) {
+void engine_start(SraEngine *eng, int offset, int chord_ch, int silent) {
     SraCallbacks cb;
-    cb.on_chord  = cb_chord;
-    cb.on_tempo  = cb_tempo;
+    cb.on_chord  = silent ? NULL : cb_chord;
+    cb.on_tempo  = silent ? NULL : cb_tempo;
     cb.on_error  = cb_error;
     cb.on_timer  = cb_timer;
     cb.userdata  = eng;

@@ -1,0 +1,23 @@
+# SRA configuration file.
+# Install as /etc/sra/sra.conf (or pass an explicit path with
+# 'sra --config /path/to/sra.conf').
+#
+# Format: key = value, one per line.
+# '#' starts a comment.
+# Unknown keys and malformed lines are reported and abort startup.
+
+# MIDI rawmidi addresses (Linux).  Use 'amidi -l' to list them.
+# Both are required in daemon mode.
+in  = hw:5,0
+out = hw:5,1
+
+# Channel reserved for chord input (0..15).  Must match the channel
+# your keyboard sends left-hand chords on.  Displayed as +1 in the UI.
+# Default: 2  (i.e. MIDI channel 3).
+chord_ch = 2
+
+# Command key zone shift: -1, 0, or +1.  Matches the [O] parameter
+# in the interactive setup screen.  Use +1 for 76-key keyboards,
+# -1 for 49-key keyboards.
+# Default: 0  (61-key).
+ctrl_offset = 0

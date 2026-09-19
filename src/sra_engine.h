@@ -41,8 +41,10 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx);
    On Linux also launches the ALSA MIDI-IN reader thread.
    offset:   semitone transposition.
    chord_ch: MIDI channel 0-15 reserved for chord input.
-             (Internal -1 legacy mode is not exposed here.) */
-void engine_start(SraEngine *eng, int offset, int chord_ch);
+             (Internal -1 legacy mode is not exposed here.)
+   silent:   non-zero in daemon mode — UI callbacks (chord / tempo)
+             are not installed, so nothing is written to stdout. */
+void engine_start(SraEngine *eng, int offset, int chord_ch, int silent);
 
 /* Tear down the engine. */
 void engine_destroy(SraEngine *eng);

@@ -3,6 +3,7 @@
 
 #include <termios.h>
 #include <signal.h>
+#include <syslog.h>
 #include <sys/select.h>
 #include "sra_types.h"
 #include "midi_device.h"
@@ -36,10 +37,90 @@ static void set_raw_mode(void) {
 
 /* ---- signal handler (Ctrl+C) ---- */
 
-static void handle_sigint(int sig) {
+static void handle_signal(int sig) {
     (void)sig;
     /* Request a graceful shutdown; the main loop will clean up. */
     g_engine.running = 0;
+}
+
+/* ---- daemon mode ---- */
+
+/* Resolve cfg->in_addr / cfg->out_addr to port indices, or return -1.
+   Logs an error to syslog on failure. */
+static int daemon_resolve_ports(SraConfig *cfg) {
+    if (cfg->in_addr[0] == '\0' || cfg->out_addr[0] == '\0') {
+        syslog(LOG_ERR, "missing --in / --out (required in daemon mode)");
+        return -1;
+    }
+    if (cfg->in_addr[0] != '\0') {
+        int idx = midi_device_find_in(&g_midi, cfg->in_addr);
+        if (idx < 0) {
+            syslog(LOG_ERR, "MIDI IN port '%s' not found", cfg->in_addr);
+            return -1;
+        }
+        g_midi.in_index = idx;
+    }
+    if (cfg->out_addr[0] != '\0') {
+        int idx = midi_device_find_out(&g_midi, cfg->out_addr);
+        if (idx < 0) {
+            syslog(LOG_ERR, "MIDI OUT port '%s' not found", cfg->out_addr);
+            return -1;
+        }
+        g_midi.out_index = idx;
+    }
+    return 0;
+}
+
+/* Run SRA as a daemon: no UI, no terminal, logs via syslog.
+   Returns the process exit code. */
+static int run_daemon(SraConfig *cfg) {
+    int err;
+
+    openlog("sra", LOG_PID, LOG_DAEMON);
+
+    signal(SIGTERM, handle_signal);
+    signal(SIGINT,  handle_signal);
+    signal(SIGHUP,  SIG_IGN);
+
+    g_app.chord_channel = cfg->chord_ch;
+    g_app.ctrl_offset   = cfg->ctrl_offset;
+
+    midi_device_probe(&g_midi);
+    if (daemon_resolve_ports(cfg) != 0) {
+        closelog();
+        return 1;
+    }
+
+    engine_init(&g_engine, &g_midi, NULL);
+
+    err = midi_device_open(&g_midi, NULL);
+    if (err) {
+        syslog(LOG_ERR, "MIDI open error %d", err);
+        engine_destroy(&g_engine);
+        closelog();
+        return 1;
+    }
+
+    engine_start(&g_engine,
+                 12 * g_app.ctrl_offset,
+                 g_app.chord_channel,
+                 1 /* silent: no UI callbacks */);
+
+    syslog(LOG_INFO, "started, in=%s out=%s chord_ch=%d ctrl_offset=%d",
+           cfg->in_addr, cfg->out_addr,
+           g_app.chord_channel, g_app.ctrl_offset);
+
+    while (g_engine.running) pause();
+
+    g_engine.running = 0;
+    pthread_join(g_engine.midi_in_tid, NULL);
+    pthread_join(g_engine.engine_tid,  NULL);
+    midi_device_close(&g_midi);
+    engine_destroy(&g_engine);
+
+    syslog(LOG_INFO, "stopped");
+    closelog();
+    return 0;
 }
 
 /* ---- main ---- */
@@ -58,10 +139,13 @@ int main(int argc, char **argv) {
     if (sra_config_load(&cfg) != 0)
         return 1;
 
+    if (cfg.daemon)
+        return run_daemon(&cfg);
+
     /* Save terminal state; restore on exit or Ctrl+C. */
     tcgetattr(STDIN_FILENO, &g_orig_termios);
     atexit(restore_terminal);
-    signal(SIGINT, handle_sigint);
+    signal(SIGINT, handle_signal);
 
     midi_device_probe(&g_midi);
     ui_init(&g_ui);
@@ -123,7 +207,8 @@ int main(int argc, char **argv) {
             fflush(stdout);
             engine_start(&g_engine,
                          12 * g_app.ctrl_offset,
-                         g_app.chord_channel);
+                         g_app.chord_channel,
+                         0 /* interactive: UI callbacks enabled */);
             g_app.status = 3;
         }
     }

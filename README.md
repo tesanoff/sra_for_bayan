@@ -25,7 +25,8 @@ All source code in this project is licensed under the **AGPLv3**
 2. Splits the keyboard into two zones: **Lower Channel** and **Upper Channel**.
 3. Style files use **SMF format (MIDI Format 0)** and can be user-created.
    *(SMF Format 1 is not supported.)*
-4. Fully controlled via the MIDI keyboard; no computer keyboard required.
+4. Fully controlled via the MIDI keyboard and/or **SysEx** messages;
+   no computer keyboard required.
 5. \* The file `sra_init.hex` in the SRA directory can store MIDI messages for device initialization at startup.
 
 ---
@@ -34,12 +35,21 @@ All source code in this project is licensed under the **AGPLv3**
 
 | Key | Parameter | Description |
 |-----|-----------|-------------|
-| `[W][X]` | MIDI Channel | The channel your keyboard transmits on |
+| `[A][D]` | Chord Ch | MIDI channel reserved for chord input (1–16). Must match the channel your keyboard uses for the left-hand chord zone. |
 | `[O]` | CTRL Offset | Shifts the command key zone. Values: `{-1, 0, +1}` — use `+1` for 76-key, `-1` for 49-key |
+
+> The `[W][X] Channel` parameter from earlier versions has been removed.
+> Live notes are no longer merged onto a single channel — they are
+> forwarded on the same MIDI channel they arrived on.
 
 ---
 
-## MIDI Keyboard Command Reference
+## MIDI Keyboard Command Reference (deprecated)
+
+> **Note:** These Note-On commands are kept for backward compatibility.
+> They can be disabled via SysEx (`F0 7D 50 00 F7`) and are expected to
+> be superseded by the SysEx protocol in future versions. New setups
+> should prefer SysEx control.
 
 > **C5 = Middle C**
 
@@ -61,24 +71,92 @@ All source code in this project is licensed under the **AGPLv3**
 | `Shift + B7` | To Original |
 | `Shift + A7` | To Variation |
 | `Shift + Bb7` | Sync Start |
-| `Shift + Ab7` | **Function** (see below) |
+| `Shift + Ab7` | *(obsolete — Function mode has been removed)* |
 
-### Function Mode (`Shift + Ab7`)
+---
 
-Press `Shift + Ab7` while the rhythm is **stopped** to enter Function mode.
-In this mode, each key loads a different style file (except Shift, Tempo+, Tempo−, Intro/Ending, Fade Out, and Start).
+## SysEx Control Protocol
 
-| Example | Action |
-|---------|--------|
-| `Shift+Ab7` + `C3` | Load `style36.mid` |
-| `Shift+Ab7` + `C#3` | Load `style37.mid` |
-| *(and so on…)* | |
-| `Shift+Ab7` + Intro/Ending | Toggle MIDI Clock (Start/Stop) output / Reset |
-| `Shift+Ab7` + Start | Octave shift up (Upper keyboard) |
-| `Shift+Ab7` + Fade Out | Octave shift down (Upper keyboard) |
-| `Shift+Ab7` + Tempo+ | Transpose + |
-| `Shift+Ab7` + Tempo− | Transpose − |
-| `Shift+Ab7` + Shift | Exit the program |
+SRA accepts control messages as MIDI System Exclusive (SysEx) data.
+The protocol uses the non-commercial Manufacturer ID `0x7D`.
+
+### Message format
+
+```
+F0 7D <CMD> [<DATA...>] F7
+```
+
+| Byte | Meaning |
+|------|---------|
+| `F0` | SysEx start |
+| `7D` | Manufacturer ID (non-commercial) |
+| `<CMD>` | Command byte (see table below) |
+| `<DATA...>` | Optional parameter bytes (0–127 each) |
+| `F7` | SysEx end |
+
+- Unknown CMD values are ignored silently.
+- Malformed messages with our Manufacturer ID are reported to `stderr`
+  but never abort the engine.
+- SysEx is processed independently of Note-On commands: it always works,
+  even when Note-On commands are disabled.
+
+### Command table
+
+| CMD | Function | Data |
+|-----|----------|------|
+| `01` | Start | — |
+| `02` | Stop | — |
+| `03` | Sync Start | — |
+| `04` | Fill to Original | — |
+| `05` | Fill to Variation | — |
+| `06` | Intro / Ending (toggle) | — |
+| `07` | Tempo + | — |
+| `08` | Tempo − | — |
+| `09` | Toggle M.Bass | — |
+| `0A` | Toggle Acc. | — |
+| `0B` | Toggle Acc.Bass | — |
+| `0C` | Toggle Drum | — |
+| `0D` | Fade Out (toggle) | — |
+| `0E` | Change Mode | — |
+| `20` | Load Style | style number (0–127) |
+| `50` | Enable / disable Note-On commands | `00` = off, `01` = on |
+| `51` | Set chord channel | channel (0–15) |
+
+### Examples
+
+Start the arranger:
+
+```
+F0 7D 01 F7
+```
+
+Load `style5.mid`:
+
+```
+F0 7D 20 05 F7
+```
+
+Set the chord channel to MIDI channel 4 (0-based 3):
+
+```
+F0 7D 51 03 F7
+```
+
+Disable the legacy Note-On commands:
+
+```
+F0 7D 50 00 F7
+```
+
+### Sending SysEx from a shell
+
+On Linux, `amidi` from `alsa-utils` can send raw SysEx:
+
+```sh
+amidi -p hw:5,2 -S 'F0 7D 01 F7'
+```
+
+On Windows, use `sendmidi` or a similar MIDI utility.
 
 ---
 
@@ -88,7 +166,8 @@ In this mode, each key loads a different style file (except Shift, Tempo+, Tempo
 
 - Save as **SMF Format 0**. Name files `style0.mid` through `style127.mid`.
 - Place style files in the **same directory** as the SRA executable (e.g. `C:\NazoMusic-SRA\`).
-- Each file is mapped to a key and loaded via Function mode.
+- Each file is mapped to a key and loaded via the SysEx `Load Style`
+  command (`F0 7D 20 <NN> F7`).
 
 ### Parameters
 
@@ -121,12 +200,18 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 
 | Channel | Name | Role |
 |---------|------|------|
-| Ch2 | Acc.Bass | Auto bass |
-| Ch5 | Acc1 | Accompaniment part 1 |
-| Ch6 | Acc2 | Accompaniment part 2 |
-| Ch7 | Acc3 | Accompaniment part 3 (sustained tones, e.g. Strings) |
-| Ch8 | Acc4 | Accompaniment part 4 (sustained tones, e.g. Strings) |
-| Ch10 | Drum | Drum kit |
+| Ch8  | Acc.Bass | Auto bass |
+| Ch9  | Acc1     | Accompaniment part 1 |
+| Ch10 | Drum     | Drum kit (GM standard drum channel) |
+| Ch11 | Acc2     | Accompaniment part 2 |
+| Ch12 | Acc3     | Accompaniment part 3 (sustained tones, e.g. Strings) |
+| Ch13 | Acc4     | Accompaniment part 4 (sustained tones, e.g. Strings) |
+| Ch14 | M.Bass   | Melodic bass |
+| Ch15 | Lower    | Lower voice (sustained tones) |
+
+> Channels **1–7** and **16** are reserved for live playing. SRA does not
+> send accompaniment data to them, and ignores any incoming MIDI
+> messages on the arranger-owned channels Ch8–Ch15.
 
 ---
 
@@ -134,17 +219,33 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 
 **1. After installation, how do I select a style?**
 
-After installation you will have one style file: `style0.mid`, which loads automatically when SRA starts. To begin on a 61-key keyboard, press the highest Bb (`Bb7`) to start the rhythm.
+After installation you will have one style file: `style0.mid`, which loads
+automatically when SRA starts. To begin on a 61-key keyboard, press the
+highest Bb (`Bb7`) to start the rhythm, or send `F0 7D 01 F7` via SysEx.
 
-For **Sync Start**, hold the highest C (`C8`) — keep it held — then press `Bb7` and release. The rhythm will start as soon as you play a chord.
+For **Sync Start**, hold the highest C (`C8`) — keep it held — then press
+`Bb7` and release (or send `F0 7D 03 F7`). The rhythm will start as soon
+as you play a chord.
 
-Chords are detected using a three-key method and support chord inversions (C, C/G, C/D, etc.). The current chord and tempo are shown on screen.
+Chords are detected only on the channel selected as **Chord Ch** in the
+setup screen. A 3-note recognition algorithm is used, supporting chord
+inversions (C, C/G, C/D, etc.). The current chord and tempo are shown on
+screen.
 
-To change styles, download or create additional style files. Name them `style36.mid`, `style37.mid`, etc. To load `style36.mid`, hold Shift (`C8`), press `Ab7`, then release. The system enters style-selection mode. On a 61-key keyboard, `C3` (the lowest key) maps to number 36, so pressing `C3` loads `style36.mid`. `D3` loads `style38.mid`, and so on.
+To load a different style, use the SysEx command:
+
+```
+F0 7D 20 <NN> F7
+```
+
+where `<NN>` is the style number (0–127). For example, to load
+`style36.mid`, send `F0 7D 20 24 F7` (0x24 = 36).
 
 **2. After selecting a style, how do I adjust the tempo?**
 
-Hold Shift (`C8`) and press `C#7` to increase tempo, or `Eb7` to decrease it. Each press changes the tempo by 1.
+Hold Shift (`C8`) and press `C#7` to increase tempo, or `Eb7` to decrease
+it. Each press changes the tempo by 1. Alternatively, send
+`F0 7D 07 F7` (Tempo +) or `F0 7D 08 F7` (Tempo −) via SysEx.
 
 ---
 
@@ -161,6 +262,28 @@ Hold Shift (`C8`) and press `C#7` to increase tempo, or `Eb7` to decrease it. Ea
 | `Error(7)` | Style file data exceeds buffer size |
 | `Error(888)` | MIDI input device error |
 | `Error(999)` | MIDI output device error |
+
+### SysEx Errors
+
+SysEx errors do not abort the engine. They are printed to standard error
+in the following format:
+
+```
+SRA SysEx error: <description> (CMD=<cmd>, len=<len>)
+```
+
+Typical messages:
+
+| Message | Cause |
+|---------|-------|
+| `missing CMD byte` | `F0 7D F7` — no command byte |
+| `message too long` | SysEx payload exceeds 256 bytes |
+| `CMD 0x20 requires 1 data byte` | Load Style without a style number |
+| `CMD 0x20 data out of range` | Style number > 127 |
+| `CMD 0x50 requires 1 data byte` | Enable/disable command without a value |
+| `CMD 0x50 data must be 0 or 1` | Value other than 0 or 1 |
+| `CMD 0x51 requires 1 data byte` | Set Chord Channel without a value |
+| `CMD 0x51 data out of range (0..15)` | Channel > 15 |
 
 ---
 

@@ -57,6 +57,13 @@ void     sracore_destroy(SraCore *sra);
    Must be called before sracore_init(). */
 void     sracore_set_channel(SraCore *sra, int channel, int offset);
 
+/* Set the MIDI channel (0-15) reserved for chord input.
+   Notes arriving on this channel are always analysed as chords,
+   regardless of pitch.  Notes on other channels are always treated
+   as melody and forwarded to the main key channel.
+   Pass -1 to restore the legacy "any channel, by pitch" behaviour. */
+void     sracore_set_chord_channel(SraCore *sra, int chord_ch);
+
 /* Install all four callbacks at once. */
 void     sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb);
 

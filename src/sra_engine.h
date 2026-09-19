@@ -35,8 +35,11 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx);
 
 /* Install callbacks, call sracore_init(), launch the real-time thread.
    On Linux also launches the ALSA MIDI-IN reader thread.
-   key_ch: MIDI channel 0-15.  offset: semitone transposition. */
-void engine_start(SraEngine *eng, int key_ch, int offset);
+   key_ch:   MIDI channel 0-15 for outgoing melody/echo.
+   offset:   semitone transposition.
+   chord_ch: MIDI channel 0-15 reserved for chord input, or -1 for
+             the legacy "any channel, by pitch" behaviour. */
+void engine_start(SraEngine *eng, int key_ch, int offset, int chord_ch);
 
 /* Tear down the engine. */
 void engine_destroy(SraEngine *eng);

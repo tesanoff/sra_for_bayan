@@ -2,6 +2,11 @@
 
 #include "sracore_private.h"
 
+/* Delay (in microseconds) after the last chord note-on before the
+   chord is analysed.  Avoids analysing intermediate states (1-2 notes)
+   when the keys do not arrive simultaneously. */
+#define CHORD_DEBOUNCE_US 30000L
+
 /* ------------------------------------------------------------------ */
 /* CountNote: re-apply voices for the current session position          */
 /* ------------------------------------------------------------------ */
@@ -302,7 +307,14 @@ static void emit_volume_all(SraCore *sra, SRABYTE vol) {
 void sra_step(SraCore *sra) {
     if (sra->que_lock) return;
 
-    if (!sra->start_f) sra_make_chord(sra);
+    /* Advance chord debounce timer and, if it has expired, try to
+       recognise the chord.  chord_change is set by sra_check_chord()
+       on every note-on, and cleared inside sra_make_chord(). */
+    if (sra->chord_change) {
+        sra->chord_debounce += sra->wait;
+        if (sra->chord_debounce >= CHORD_DEBOUNCE_US && !sra->start_f)
+            sra_make_chord(sra);
+    }
 
     /* Update clock via platform timer callback */
     if (sra->cb.on_timer) sra->cb.on_timer(sra, sra->cb.userdata);
@@ -315,7 +327,9 @@ void sra_step(SraCore *sra) {
     if (sra->wait2 < sra->wait) return;
     sra->wait2 -= sra->wait;
 
-    if (sra->clock3 == 0) sra_make_chord(sra);
+    if (sra->clock3 == 0 && sra->chord_change &&
+        sra->chord_debounce >= CHORD_DEBOUNCE_US)
+        sra_make_chord(sra);
 
     /* Fadeout */
     if (sra->fadeout_f == 127) { sra->clock2 = 0; sra->fadeout_f--; }

@@ -73,6 +73,7 @@ typedef enum {
 struct SraCore {
     /* MIDI channel routing */
     int  key_ch;
+    int  chord_ch;              /* channel reserved for chord input, -1 = legacy */
     int  offset, offset2, offset3, offset4;
 
     /* Key tracking for chord detection */
@@ -112,6 +113,7 @@ struct SraCore {
 
     /* Chord state */
     SRABYTE          chord_change;
+    long             chord_debounce;   /* usec since last chord note-on */
     SRABYTE          chord_c;          /* chord is sounding */
     SRABYTE          chordd;           /* chord root 0-11 */
     SRABYTE          chord_k;          /* kind: 0=major 1=minor 2=other */

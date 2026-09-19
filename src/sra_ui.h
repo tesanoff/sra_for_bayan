@@ -12,6 +12,7 @@
 typedef struct {
     int status;          /* 0=no device  1=setup  3=running */
     int melody_channel;  /* 0-15, displayed as 1-16         */
+    int chord_channel;   /* 0-15, displayed as 1-16         */
     int ctrl_offset;     /* -1, 0, or +1                    */
 } AppState;
 

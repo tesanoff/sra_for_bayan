@@ -54,6 +54,9 @@ int main(void) {
     ui_init(&g_ui);
     engine_init(&g_engine, &g_midi, NULL);
 
+    /* Defaults for interactive setup. */
+    g_app.chord_channel = 2;   /* channel 3 (1-based) is reserved for chords */
+
     if (g_midi.in_count > 0 && g_midi.out_count > 0)
         g_app.status = 1;
 
@@ -82,7 +85,8 @@ int main(void) {
             fflush(stdout);
             engine_start(&g_engine,
                          g_app.melody_channel,
-                         12 * g_app.ctrl_offset);
+                         12 * g_app.ctrl_offset,
+                         g_app.chord_channel);
             g_app.status = 3;
         }
     }

@@ -135,6 +135,14 @@ void sra_check_chord(SraCore *sra, int vel) {
     SRABYTE temp;
 
     if (vel && sra->key_on_count < 5) {
+        /* Ignore duplicate note-on: if the same note is already held
+           (e.g. when re-triggering a chord before releasing the old one),
+           do not add it a second time, as that would break chord
+           recognition. */
+        for (i = 0; i < sra->key_on_count; i++) {
+            if (sra->key_on[i][0] == sra->msg) return;
+        }
+
         /* insert into KeyOn[] sorted ascending by note */
         sra->key_on[sra->key_on_count][0] = sra->msg;
         sra->key_on[sra->key_on_count][1] = sra->key_v;
@@ -149,6 +157,7 @@ void sra_check_chord(SraCore *sra, int vel) {
         }
         sra->key_on_count++;
         sra->chord_change = 1;
+        sra->chord_debounce = 0;   /* restart debounce timer */
     } else if (!vel) {
         for (i = 0; i < sra->key_on_count; i++) {
             if (sra->key_on[i][0] == sra->msg) {
@@ -176,9 +185,10 @@ void sra_check_key_on(SraCore *sra) {
 
     if (!sra->func) {
         if (!sra->note_cmd_enabled) {
-            /* Note-On commands disabled: only chord keys are processed.
-               Command notes (patch +/- and the CMD_* range) are ignored. */
-            if (note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
+            /* Note-On commands disabled: only chord keys are processed
+               (and only in legacy chord_ch < 0 mode). */
+            if (sra->chord_ch < 0 &&
+                note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
                 (sra->mode || sra->start_f || sra->sync_f)) {
                 sra->key_v = sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE];
                 sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
@@ -211,9 +221,11 @@ void sra_check_key_on(SraCore *sra) {
             sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
             sra_check_com(sra);
 
-        } else if (note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
+        } else if (sra->chord_ch < 0 &&
+                   note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
                    (sra->mode || sra->start_f || sra->sync_f)) {
-            /* chord key: read velocity, suppress it in output queue */
+            /* chord key (legacy pitch-based mode only): read velocity,
+               suppress it in output queue, feed the chord detector. */
             sra->key_v = sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE];
             sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
             sra_check_chord(sra, sra->key_v);
@@ -252,7 +264,8 @@ void sra_check_key_off(SraCore *sra) {
 
     if (note == (SRABYTE)(CMD_SHIFT + sra->offset)) {
         sra->shift_f = 0;
-    } else if (note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
+    } else if (sra->chord_ch < 0 &&
+               note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
                (sra->mode || sra->start_f || sra->sync_f)) {
         sra_check_chord(sra, 0);
     }
@@ -354,6 +367,9 @@ int sra_comp_chord(SraCore *sra, int n,
         else if (b-a==3 && c-a==6)  { sra_set_chord(sra,a,CHORD_XDIM);  return 1; }
         else if (b-a==7 && c-a==10) { sra_set_chord(sra,a,CHORD_X7SUS); return 1; }
         else if (b-a==7 && c-a==12) { sra_set_chord(sra,a,CHORD_XSUS);  return 1; }
+        /* Bayan left-hand dom7 without the 5th: root, major 3rd, minor 7th
+           e.g. C-E-Bb = (0, 4, 10). */
+        else if (b-a==4 && c-a==10) { sra_set_chord(sra,a,CHORD_X7);    return 1; }
     }
     return 0;
 }

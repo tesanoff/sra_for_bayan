@@ -18,6 +18,8 @@ SraCore *sracore_create(void) {
     sra->acc_bass_vf   = 1;
     sra->drum_vf       = 1;
     sra->note_cmd_enabled = 1;   /* Note-On commands active by default */
+    sra->chord_ch         = 2;   /* default: channel 3 (0-based) */
+    sra->chord_debounce   = 0;
     strcpy(sra->style_name, "style");
     return sra;
 }
@@ -31,6 +33,11 @@ void sracore_destroy(SraCore *sra) {
 void sracore_set_channel(SraCore *sra, int channel, int offset) {
     sra->key_ch = channel;
     sra->offset = offset;
+}
+
+void sracore_set_chord_channel(SraCore *sra, int chord_ch) {
+    if (chord_ch < -1 || chord_ch > 15) return;
+    sra->chord_ch = chord_ch;
 }
 
 void sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb) {
@@ -124,8 +131,31 @@ void sracore_midi_in(SraCore *sra,
     if (msg == (SRABYTE)(0x90 | sra->key_ch) && msg3 != 0xFF) {
         /* key_v is the velocity the chord functions will store */
         sra->key_v = msg3;
-        if (msg3) sra_check_key_on(sra);
-        else      sra_check_key_off(sra);
+
+        /* Decide chord vs melody by source channel when chord_ch is set,
+           otherwise fall back to the legacy "by pitch" behaviour. */
+        if (sra->chord_ch >= 0) {
+            int in_ch = raw_status & 0x0f;
+            if (in_ch == sra->chord_ch) {
+                /* Chord channel: suppress the note in the output queue
+                   (velocity = 0) and feed the chord detector.
+                   Match the legacy behaviour of sra_check_key_on/_off:
+                   use the offset-adjusted note number, and only process
+                   when the arranger is active.
+                   TODO: revisit whether to always recognise chords. */
+                sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
+                sra->msg = (SRABYTE)(data1 + sra->offset3 + sra->offset4);
+                if (sra->mode || sra->start_f || sra->sync_f) {
+                    sra_check_chord(sra, sra->key_v);
+                }
+            }
+            /* else: melody.  The note is already in the queue with its
+               original velocity; nothing else to do here. */
+        } else {
+            /* legacy: dispatch by pitch, as before */
+            if (msg3) sra_check_key_on(sra);
+            else      sra_check_key_off(sra);
+        }
     }
 }
 

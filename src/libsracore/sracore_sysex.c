@@ -31,6 +31,7 @@
 #define SX_CHANGE_MODE      0x0E
 #define SX_LOAD_STYLE       0x20
 #define SX_NOTE_CMD_ENABLE  0x50
+#define SX_SET_CHORD_CH     0x51
 
 /* ------------------------------------------------------------------ */
 /* Error reporting (non-fatal)                                          */
@@ -136,6 +137,13 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
         if (datalen != 1) { sx_error("CMD 0x20 requires 1 data byte", cmd, datalen); return; }
         if (d0 > 127)     { sx_error("CMD 0x20 data out of range",   cmd, datalen); return; }
         sra_load_style(sra, (int)d0);
+        break;
+
+    /* ---- Chord channel ------------------------------------------- */
+    case SX_SET_CHORD_CH:
+        if (datalen != 1) { sx_error("CMD 0x51 requires 1 data byte", cmd, datalen); return; }
+        if (d0 > 15)      { sx_error("CMD 0x51 data out of range (0..15)", cmd, datalen); return; }
+        sra->chord_ch = d0;
         break;
 
     /* ---- Note-On command enable ---------------------------------- */

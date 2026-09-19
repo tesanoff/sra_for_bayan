@@ -22,6 +22,7 @@ void ui_init(AppUI *ui) {
 /* ------------------------------------------------------------------ */
 
 void ui_print_state(AppUI *ui, MidiDevice *dev, AppState *app) {
+    (void)ui;   /* AppUI carries no fields on Linux */
     g_dev = dev;
     g_app = app;
 

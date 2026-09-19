@@ -247,10 +247,14 @@ int sra_load_style(SraCore *sra, int style_num) {
     if (i == 512) { fclose(f); sra_do_error(sra, 2); return 0; }
 
     sra->tempo = (SRABYTE)fgetc(f); sra->tempo *= 2;
-    for (i = 0; i < 5; i++) fgetc(f); sra->beat = (SRABYTE)fgetc(f);
-    for (i = 0; i < 5; i++) fgetc(f); sra->il   = (SRABYTE)fgetc(f);
-    for (i = 0; i < 5; i++) fgetc(f); sra->ml   = (SRABYTE)fgetc(f);
-    for (i = 0; i < 5; i++) fgetc(f); sra->el   = (SRABYTE)fgetc(f);
+    for (i = 0; i < 5; i++) fgetc(f);
+    sra->beat = (SRABYTE)fgetc(f);
+    for (i = 0; i < 5; i++) fgetc(f);
+    sra->il   = (SRABYTE)fgetc(f);
+    for (i = 0; i < 5; i++) fgetc(f);
+    sra->ml   = (SRABYTE)fgetc(f);
+    for (i = 0; i < 5; i++) fgetc(f);
+    sra->el   = (SRABYTE)fgetc(f);
 
     if (sra->tempo < 20  || sra->tempo > 250) { fclose(f); sra_do_error(sra, 3); return 0; }
     if (sra->beat != 2   && sra->beat != 3 &&

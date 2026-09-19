@@ -39,19 +39,56 @@ static void cb_error(SraCore *sra, int code, void *userdata) {
 
 /* Accumulates raw MIDI bytes into complete messages, then calls
    midi_in_process under the engine mutex.                             */
+#define SRA_SYSEX_MAX 256
+
 static void *midi_in_thread_func(void *arg) {
     SraEngine     *eng = (SraEngine *)arg;
     unsigned char  b;
     unsigned char  msg[3];
     int            got      = 0;  /* bytes collected (msg[0]=status) */
     int            expected = 0;  /* total bytes for this message     */
-    int            in_sysex = 0;
+
+    /* SysEx accumulation state */
+    unsigned char  sysex[SRA_SYSEX_MAX];
+    int            sysex_len  = 0;
+    int            in_sysex   = 0;
+    int            sysex_over = 0;  /* 1 = overflowed, discard until F7 */
 
     while (snd_rawmidi_read(eng->midi->h_in, &b, 1) == 1) {
-        /* SysEx handling */
-        if (b == 0xf0) { in_sysex = 1; got = 0; continue; }
-        if (b == 0xf7) { in_sysex = 0; got = 0; continue; }
-        if (in_sysex)  continue;
+        /* SysEx handling.  Real-time bytes (0xF8..0xFF) are ignored,
+           even inside a SysEx message (kept simple, matches old behaviour). */
+        if (b == 0xf0) {
+            in_sysex   = 1;
+            sysex_len  = 0;
+            sysex_over = 0;
+            got        = 0;
+            continue;
+        }
+        if (b == 0xf7) {
+            if (in_sysex && !sysex_over && sysex_len > 0) {
+                pthread_mutex_lock(&eng->cs);
+                sracore_sysex_in(eng->sra, sysex, sysex_len);
+                pthread_mutex_unlock(&eng->cs);
+            }
+            in_sysex   = 0;
+            sysex_len  = 0;
+            sysex_over = 0;
+            got        = 0;
+            continue;
+        }
+        if (in_sysex) {
+            if (b >= 0xf8) continue;          /* ignore real-time inside SysEx */
+            if (sysex_over) continue;         /* still discarding until F7 */
+            if (sysex_len >= SRA_SYSEX_MAX) {
+                fprintf(stderr,
+                        "SRA SysEx error: message too long (> %d bytes)\n",
+                        SRA_SYSEX_MAX);
+                sysex_over = 1;
+                continue;
+            }
+            sysex[sysex_len++] = b;
+            continue;
+        }
 
         if (b >= 0x80) { /* new status byte */
             unsigned char type = b & 0xf0;

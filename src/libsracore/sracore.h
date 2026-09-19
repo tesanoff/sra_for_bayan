@@ -84,6 +84,16 @@ void sracore_step(SraCore *sra);
 void sracore_midi_in(SraCore *sra,
                      SRABYTE raw_status, SRABYTE data1, SRABYTE data2);
 
+/* Feed one complete SysEx message (F0 and F7 framing bytes already
+   stripped by the platform layer).  data[0] is expected to be the
+   Manufacturer ID (0x7D).  len is the number of bytes in data[].
+
+   Unknown CMDs are silently ignored.  Malformed messages that carry
+   our Manufacturer ID are reported to stderr but never abort the
+   engine.  Safe to call from the same critical section as
+   sracore_midi_in(). */
+void sracore_sysex_in(SraCore *sra, const SRABYTE *data, int len);
+
 /* ------------------------------------------------------------------ */
 /* MIDI output  (call under the same critical section as sracore_step) */
 /* ------------------------------------------------------------------ */

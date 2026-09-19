@@ -134,6 +134,9 @@ struct SraCore {
     SRABYTE last_sty_msg;
     SRABYTE patch;
 
+    /* SysEx control */
+    SRABYTE note_cmd_enabled;   /* 1 = Note-On command notes active */
+
     /* Per-channel program tracking */
     SRABYTE prog[16][3];
     SRABYTE prog_t[16][3];

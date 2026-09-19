@@ -20,7 +20,8 @@ ARFLAGS = rcs
 SRCS = sracore.c \
        sracore_chord.c \
        sracore_style.c \
-       sracore_engine.c
+       sracore_engine.c \
+       sracore_sysex.c
 
 HDRS = sracore.h sracore_private.h
 

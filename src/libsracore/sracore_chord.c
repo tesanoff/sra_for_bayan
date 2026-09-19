@@ -175,6 +175,18 @@ void sra_check_key_on(SraCore *sra) {
     sra->msg = note;
 
     if (!sra->func) {
+        if (!sra->note_cmd_enabled) {
+            /* Note-On commands disabled: only chord keys are processed.
+               Command notes (patch +/- and the CMD_* range) are ignored. */
+            if (note < (SRABYTE)(CMD_UPPERD + sra->offset3 + sra->offset4) &&
+                (sra->mode || sra->start_f || sra->sync_f)) {
+                sra->key_v = sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE];
+                sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
+                sra_check_chord(sra, sra->key_v);
+            }
+            return;
+        }
+
         if (note == (SRABYTE)(CMD_INCPATCH + sra->offset3 + sra->offset4)) {
             /* suppress velocity in queue, change patch */
             sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;

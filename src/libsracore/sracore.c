@@ -17,6 +17,7 @@ SraCore *sracore_create(void) {
     sra->acc_vf        = 1;
     sra->acc_bass_vf   = 1;
     sra->drum_vf       = 1;
+    sra->note_cmd_enabled = 1;   /* Note-On commands active by default */
     strcpy(sra->style_name, "style");
     return sra;
 }

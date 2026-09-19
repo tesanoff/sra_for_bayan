@@ -21,14 +21,14 @@
 /* ------------------------------------------------------------------ */
 /* MIDI channel assignments used by the arranger                        */
 /* ------------------------------------------------------------------ */
-#define LOWER    0x0a
-#define MBASS    0x08
-#define ACC1     0x04
-#define ACC2     0x05
-#define ACC3     0x06
-#define ACC4     0x07
-#define ACCBASS  0x01
-#define DRUM     0x09
+#define LOWER    0x0f
+#define MBASS    0x0d
+#define ACC1     0x09
+#define ACC2     0x0a
+#define ACC3     0x0b
+#define ACC4     0x0c
+#define ACCBASS  0x07
+#define DRUM     0x0e
 
 /* ------------------------------------------------------------------ */
 /* Control command note numbers (relative to sra->offset)               */

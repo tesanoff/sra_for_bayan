@@ -49,10 +49,20 @@ void midi_device_probe(MidiDevice *dev);
 void midi_device_select_in (MidiDevice *dev, int delta);
 void midi_device_select_out(MidiDevice *dev, int delta);
 
+/* Find an IN/OUT port by its address (e.g. "hw:5,0").
+   Returns the index, or -1 if not found.
+   On Windows the address is the device name (szPname). */
+int  midi_device_find_in (MidiDevice *dev, const char *addr);
+int  midi_device_find_out(MidiDevice *dev, const char *addr);
+
 /* Open the selected devices.
    platform_ctx:  HWND on Windows (window receives MM_MIM_DATA),
                   NULL on Linux (ALSA input handled by a thread).
    Returns 0 on success, 888 if IN open fails, 999 if OUT open fails. */
 int midi_device_open(MidiDevice *dev, void *platform_ctx);
+
+/* Close the previously opened MIDI ports.  Safe to call if they were
+   never opened (does nothing). */
+void midi_device_close(MidiDevice *dev);
 
 #endif /* MIDI_DEVICE_H */

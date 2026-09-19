@@ -55,7 +55,30 @@ static void *midi_in_thread_func(void *arg) {
     int            in_sysex   = 0;
     int            sysex_over = 0;  /* 1 = overflowed, discard until F7 */
 
-    while (snd_rawmidi_read(eng->midi->h_in, &b, 1) == 1) {
+    /* Non-blocking mode: we poll with a timeout so that the thread can
+       notice a shutdown request even when no MIDI data is arriving. */
+    snd_rawmidi_nonblock(eng->midi->h_in, 1);
+
+    while (eng->running) {
+        struct pollfd pfd;
+        int rc;
+
+        pfd.fd     = -1;
+        pfd.events = POLLIN;
+        rc = snd_rawmidi_poll_descriptors(eng->midi->h_in, &pfd, 1);
+        if (rc != 1) { usleep(1000); continue; }
+
+        rc = poll(&pfd, 1, 100);
+        if (rc <= 0) continue;               /* timeout or EINTR */
+
+        /* Re-check the running flag before touching h_in: the main
+           thread may have started a graceful shutdown while we were
+           blocked in poll().  We must not call snd_rawmidi_read()
+           after h_in has been closed. */
+        if (!eng->running) break;
+
+        if (snd_rawmidi_read(eng->midi->h_in, &b, 1) != 1)
+            continue;
         /* SysEx handling.  Real-time bytes (0xF8..0xFF) are ignored,
            even inside a SysEx message (kept simple, matches old behaviour). */
         if (b == 0xf0) {
@@ -126,7 +149,7 @@ static void *engine_thread_func(void *arg) {
     sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
     pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
 
-    while (1) {
+    while (eng->running) {
         last_usec = sracore_get_now_usec(eng->sra);
 
         pthread_mutex_lock(&eng->cs);
@@ -156,6 +179,7 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx) {
         fprintf(stderr, "SRA: out of memory\n");
         exit(1);
     }
+    eng->running = 1;
     pthread_mutex_init(&eng->cs, NULL);
 }
 

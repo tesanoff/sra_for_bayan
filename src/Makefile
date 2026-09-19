@@ -57,6 +57,7 @@ else
     SRCS_PLAT   = midi_device_linux.c \
                   sra_engine_linux.c  \
                   sra_ui_linux.c      \
+                  sra_config.c        \
                   sramain.c
     RUN_CMD     = cd $(OUTDIR) && ./sra
 endif

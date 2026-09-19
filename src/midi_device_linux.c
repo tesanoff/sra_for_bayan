@@ -79,6 +79,22 @@ void midi_device_select_out(MidiDevice *dev, int delta) {
         dev->out_index = next;
 }
 
+int midi_device_find_in(MidiDevice *dev, const char *addr) {
+    int i;
+    if (!addr || !*addr) return -1;
+    for (i = 0; i < dev->in_count; i++)
+        if (strcmp(dev->in_ports[i].addr, addr) == 0) return i;
+    return -1;
+}
+
+int midi_device_find_out(MidiDevice *dev, const char *addr) {
+    int i;
+    if (!addr || !*addr) return -1;
+    for (i = 0; i < dev->out_count; i++)
+        if (strcmp(dev->out_ports[i].addr, addr) == 0) return i;
+    return -1;
+}
+
 /* platform_ctx is unused on Linux (MIDI IN handled by a separate thread). */
 int midi_device_open(MidiDevice *dev, void *platform_ctx) {
     const char *in_addr  = dev->in_ports [dev->in_index ].addr;
@@ -96,4 +112,10 @@ int midi_device_open(MidiDevice *dev, void *platform_ctx) {
         return 999;
     }
     return 0;
+}
+
+void midi_device_close(MidiDevice *dev) {
+    if (!dev) return;
+    if (dev->h_in)  { snd_rawmidi_close(dev->h_in);  dev->h_in  = NULL; }
+    if (dev->h_out) { snd_rawmidi_close(dev->h_out); dev->h_out = NULL; }
 }

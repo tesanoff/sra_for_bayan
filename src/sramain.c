@@ -3,10 +3,12 @@
 
 #include <termios.h>
 #include <signal.h>
+#include <sys/select.h>
 #include "sra_types.h"
 #include "midi_device.h"
 #include "sra_ui.h"
 #include "sra_engine.h"
+#include "sra_config.h"
 
 /* ---- module-level singletons ---- */
 
@@ -36,14 +38,25 @@ static void set_raw_mode(void) {
 
 static void handle_sigint(int sig) {
     (void)sig;
-    restore_terminal();
-    exit(0);
+    /* Request a graceful shutdown; the main loop will clean up. */
+    g_engine.running = 0;
 }
 
 /* ---- main ---- */
 
-int main(void) {
+int main(int argc, char **argv) {
     int ch, err;
+    SraConfig cfg;
+
+    sra_config_defaults(&cfg);
+    if (sra_config_parse_args(&cfg, argc, argv) != 0)
+        return 1;
+
+    if (cfg.show_help)    { sra_config_print_help();    return 0; }
+    if (cfg.show_version) { sra_config_print_version(); return 0; }
+
+    if (sra_config_load(&cfg) != 0)
+        return 1;
 
     /* Save terminal state; restore on exit or Ctrl+C. */
     tcgetattr(STDIN_FILENO, &g_orig_termios);
@@ -54,10 +67,33 @@ int main(void) {
     ui_init(&g_ui);
     engine_init(&g_engine, &g_midi, NULL);
 
-    /* Defaults for interactive setup.  SRA sends accompaniment on
-       channels 7..14 (1-based: 8..15); the chord channel is input-only
-       and is not affected by this reservation. */
-    g_app.chord_channel  = 2;   /* channel 3 (1-based) for chords */
+    /* Apply values from config / command line.  Remaining defaults
+       (chord_channel = 2, ctrl_offset = 0) are set by
+       sra_config_defaults(). */
+    g_app.chord_channel = cfg.chord_ch;
+    g_app.ctrl_offset   = cfg.ctrl_offset;
+
+    /* If --in / --out (or in/out from config) are set, resolve them
+       to port indices now.  Both are optional; if absent, we keep
+       index 0 (first port). */
+    if (cfg.in_addr[0] != '\0') {
+        int idx = midi_device_find_in(&g_midi, cfg.in_addr);
+        if (idx < 0) {
+            fprintf(stderr, "sra: MIDI IN port '%s' not found\n",
+                    cfg.in_addr);
+            return 1;
+        }
+        g_midi.in_index = idx;
+    }
+    if (cfg.out_addr[0] != '\0') {
+        int idx = midi_device_find_out(&g_midi, cfg.out_addr);
+        if (idx < 0) {
+            fprintf(stderr, "sra: MIDI OUT port '%s' not found\n",
+                    cfg.out_addr);
+            return 1;
+        }
+        g_midi.out_index = idx;
+    }
 
     if (g_midi.in_count > 0 && g_midi.out_count > 0)
         g_app.status = 1;
@@ -94,9 +130,32 @@ int main(void) {
 
     if (g_app.status != 3) return 0;
 
-    /* ---- running phase: wait for quit (terminal already restored above) ---- */
-    /* Engine and MIDI-IN threads run in background. */
-    getchar();
+    /* ---- running phase ---- */
+    /* Wait until Ctrl+C (or a future stop condition) sets running = 0.
+       In a terminal, Enter also stops the engine for convenience. */
+    while (g_engine.running) {
+        fd_set fds;
+        struct timeval tv;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        tv.tv_sec  = 0;
+        tv.tv_usec = 100000;   /* 100 ms poll */
+        if (select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0) {
+            int c = getchar();
+            if (c == EOF || c == '\n') break;
+        }
+    }
 
+    /* Request graceful shutdown.  The worker threads check this flag
+       and exit on their own; they need h_in to stay valid until they
+       do, so we close the ports only after the joins. */
+    g_engine.running = 0;
+
+    pthread_join(g_engine.midi_in_tid, NULL);
+    pthread_join(g_engine.engine_tid,  NULL);
+    midi_device_close(&g_midi);
+    engine_destroy(&g_engine);
+
+    restore_terminal();
     return 0;
 }

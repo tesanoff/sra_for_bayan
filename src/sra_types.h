@@ -11,6 +11,8 @@
 #  include <pthread.h>
 #  include <time.h>
 #  include <sched.h>
+#  include <signal.h>
+#  include <poll.h>
 #  include <alsa/asoundlib.h>
    typedef unsigned char  BYTE;
    typedef unsigned short WORD;

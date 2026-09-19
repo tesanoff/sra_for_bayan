@@ -22,6 +22,10 @@ typedef struct {
 #endif
     MidiDevice      *midi;       /* non-owning reference */
     SraCore         *sra;        /* libsracore engine instance       */
+
+    /* Set to 0 to request a graceful shutdown of the worker threads.
+       Written from a signal handler, read from the worker loops. */
+    volatile sig_atomic_t running;
 } SraEngine;
 
 /* ------------------------------------------------------------------ */

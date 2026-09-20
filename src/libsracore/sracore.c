@@ -144,20 +144,29 @@ void sracore_midi_in(SraCore *sra,
         break;
     }
 
-    /* Chord handling: only for note events on the chord channel. */
+    /* Note handling: chord channel vs everything else. */
     if (msg2 == 0x80 || msg2 == 0x90) {
         SRABYTE vel = (msg2 == 0x80) ? 0x00 : data2;
-        if (in_ch != (SRABYTE)sra->chord_ch) return;
 
-        sra->key_v = vel;
-        if (sra->mode || sra->start_f || sra->sync_f) {
-            /* Arranger active: analyse chord, do not forward it.
-               Suppress the note we just pushed into the output queue. */
-            sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
-            sra->msg = (SRABYTE)(data1 + sra->offset3 + sra->offset4);
-            sra_check_chord(sra, vel);
+        if (in_ch == (SRABYTE)sra->chord_ch) {
+            /* Chord channel: analysis only (when arranger is active). */
+            sra->key_v = vel;
+            if (sra->mode || sra->start_f || sra->sync_f) {
+                sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
+                sra->msg = (SRABYTE)(data1 + sra->offset3 + sra->offset4);
+                sra_check_chord(sra, vel);
+            }
+            /* else: forwarded as melody/chord echo. */
+        } else {
+            /* Any other channel: restore Note-On commands.
+               sra_check_key_on/_off will handle command notes
+               (Start, Fill, Tempo, ...) and leave the rest alone. */
+            sra->key_v = vel;
+            if (msg2 == 0x90 && vel > 0)
+                sra_check_key_on(sra);
+            else
+                sra_check_key_off(sra);
         }
-        /* else: arranger idle - note is forwarded as melody/chord echo. */
     }
 }
 

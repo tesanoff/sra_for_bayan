@@ -79,7 +79,7 @@ SRCS        = $(SRCS_COMMON) $(SRCS_PLAT)
 OBJS        = $(SRCS:.c=.o)
 
 # ────────────────────────────────────────────────────────────────────
-.PHONY: all libsracore run clean clean-lib
+.PHONY: all libsracore run clean clean-lib clean-all win win-clean
 
 all: libsracore $(TARGET)
 
@@ -150,3 +150,67 @@ endif
 
 clean-lib:
 	$(MAKE) -C $(LIBDIR) clean
+
+# ── Windows cross-compilation (from Linux via MinGW) ─────────────────
+# Usage:  make win            (32-bit, requires i686-w64-mingw32-gcc)
+#         make win BITS=64    (64-bit, requires x86_64-w64-mingw32-gcc)
+#
+# Output: ../build/srawin.exe
+# Does not interfere with the normal Linux build.
+
+ifeq ($(BITS),64)
+    WIN_CC = x86_64-w64-mingw32-gcc
+else
+    WIN_CC = i686-w64-mingw32-gcc
+endif
+
+WIN_TARGET  = $(OUTDIR)/srawin.exe
+WIN_SRCS    = midi_msg.c \
+              midi_device_win.c \
+              sra_engine_win.c \
+              sra_ui_win.c \
+              sra_config.c \
+              srawin.c
+WIN_OBJS    = $(WIN_SRCS:.c=.win.o)
+
+.PHONY: win win-clean
+
+win: $(WIN_TARGET)
+
+$(WIN_TARGET): $(WIN_OBJS) $(LIBDIR)/libsracore.a.win | $(OUTDIR)
+	@echo "  LD(win)  $@"
+	$(WIN_CC) -mwindows $(WIN_OBJS) $(LIBDIR)/libsracore.a.win -lwinmm -o $@
+
+%.win.o: %.c
+	@echo "  CC(win)  $<"
+	$(WIN_CC) -Wall -Wextra -O2 -std=gnu99 -I. -c $< -o $@
+
+# Build a Windows-targeted libsracore.a under a separate name so it
+# does not clash with the Linux one.
+$(LIBDIR)/libsracore.a.win: $(LIBDIR)/sracore.c \
+                            $(LIBDIR)/sracore_chord.c \
+                            $(LIBDIR)/sracore_style.c \
+                            $(LIBDIR)/sracore_engine.c \
+                            $(LIBDIR)/sracore_sysex.c
+	@echo "  AR(win)  $@"
+	@rm -f $(LIBDIR)/*.win.o
+	$(WIN_CC) -Wall -Wextra -O2 -std=gnu99 -I$(LIBDIR) \
+	    -c $(LIBDIR)/sracore.c       -o $(LIBDIR)/sracore.win.o
+	$(WIN_CC) -Wall -Wextra -O2 -std=gnu99 -I$(LIBDIR) \
+	    -c $(LIBDIR)/sracore_chord.c -o $(LIBDIR)/sracore_chord.win.o
+	$(WIN_CC) -Wall -Wextra -O2 -std=gnu99 -I$(LIBDIR) \
+	    -c $(LIBDIR)/sracore_style.c -o $(LIBDIR)/sracore_style.win.o
+	$(WIN_CC) -Wall -Wextra -O2 -std=gnu99 -I$(LIBDIR) \
+	    -c $(LIBDIR)/sracore_engine.c -o $(LIBDIR)/sracore_engine.win.o
+	$(WIN_CC) -Wall -Wextra -O2 -std=gnu99 -I$(LIBDIR) \
+	    -c $(LIBDIR)/sracore_sysex.c -o $(LIBDIR)/sracore_sysex.win.o
+	ar rcs $@ $(LIBDIR)/sracore.win.o $(LIBDIR)/sracore_chord.win.o \
+	         $(LIBDIR)/sracore_style.win.o $(LIBDIR)/sracore_engine.win.o \
+	         $(LIBDIR)/sracore_sysex.win.o
+
+win-clean:
+	rm -f $(WIN_OBJS) $(WIN_TARGET) $(LIBDIR)/*.win.o \
+	      $(LIBDIR)/libsracore.a.win
+
+# Remove both Linux and Windows build artefacts.
+clean-all: clean win-clean

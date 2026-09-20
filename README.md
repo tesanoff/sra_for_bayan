@@ -2,6 +2,8 @@
 
 **06-26-2026 · ZZ-Denis @ NazoMusic**
 
+**Fork is maintained by Alexander Tesanov (https://tesanoff.klah.ru).**
+
 ---
 
 ## Copyright Notice
@@ -27,20 +29,151 @@ All source code in this project is licensed under the **AGPLv3**
    *(SMF Format 1 is not supported.)*
 4. Fully controlled via the MIDI keyboard and/or **SysEx** messages;
    no computer keyboard required.
-5. \* The file `sra_init.hex` in the SRA directory can store MIDI messages for device initialization at startup.
+5. Runs either interactively (terminal UI) or as a background
+   **daemon** managed by systemd.
+6. \* The file `sra_init.hex` in the SRA directory can store MIDI messages for device initialization at startup.
 
 ---
 
-## Setup Parameters
+## Command Line
+
+```
+sra                                  interactive mode
+sra --daemon [options]               daemon mode
+```
+
+| Option | Description |
+|--------|-------------|
+| `--daemon` | Run as a daemon (no UI, logs via syslog). |
+| `--config PATH` | Config file path. Default: `/etc/sra/sra.conf`. |
+| `--in ADDR` | MIDI IN rawmidi address, e.g. `hw:5,0`. |
+| `--out ADDR` | MIDI OUT rawmidi address, e.g. `hw:5,1`. |
+| `--chord-ch N` | Chord channel (0–15). |
+| `--ctrl-offset N` | Command key zone shift: `-1`, `0`, or `+1`. |
+| `--help` | Show help and exit. |
+| `--version` | Show version and exit. |
+
+Command-line options override values from the config file.
+
+In interactive mode, `--in` and `--out` set the *initial* port
+selection; you can still change it with `[Q]/[Z]` and `[E]/[C]`.
+
+---
+
+## Setup Parameters (interactive mode)
+
+When SRA starts interactively, it shows a setup screen:
+
+```
+Software-based Real-time Arranger v4.06 by ZZ-Denis @ NazoMusic
+===============================================================
+
+  [Q/Z] MIDI IN  [1/4]: hw:5,0
+         Virtual Raw MIDI
+  [E/C] MIDI OUT [2/4]: hw:5,1
+         Virtual Raw MIDI
+  [A/D] Chord Ch: 3
+  [O]   Ctrl Offset: 0
+
+  [S] START
+```
 
 | Key | Parameter | Description |
 |-----|-----------|-------------|
-| `[A][D]` | Chord Ch | MIDI channel reserved for chord input (1–16). Must match the channel your keyboard uses for the left-hand chord zone. |
-| `[O]` | CTRL Offset | Shifts the command key zone. Values: `{-1, 0, +1}` — use `+1` for 76-key, `-1` for 49-key |
+| `[Q][Z]` | MIDI IN | Select the MIDI input port. `Q` — next port, `Z` — previous port. |
+| `[E][C]` | MIDI OUT | Select the MIDI output port. `E` — next port, `C` — previous port. |
+| `[A][D]` | Chord Ch | MIDI channel reserved for chord input (1–16). Must match the channel your keyboard uses for the left-hand chord zone. `A` decreases, `D` increases. |
+| `[O]` | CTRL Offset | Shifts the command key zone. Values: `{-1, 0, +1}` — use `+1` for 76-key, `-1` for 49-key. |
+| `[S]` | START | Open the selected MIDI ports and start the arranger. |
 
 > The `[W][X] Channel` parameter from earlier versions has been removed.
 > Live notes are no longer merged onto a single channel — they are
 > forwarded on the same MIDI channel they arrived on.
+
+---
+
+## Daemon Mode
+
+SRA can run as a systemd service, without a terminal.
+
+### Configuration file
+
+Place `/etc/sra/sra.conf` with the following content (see
+`sra.conf.example` in the source tree):
+
+```
+# SRA configuration file.
+in  = hw:5,0
+out = hw:5,1
+chord_ch = 2
+ctrl_offset = 0
+```
+
+Format: `key = value`, one per line. `#` starts a comment.
+Recognised keys: `in`, `out`, `chord_ch`, `ctrl_offset`.
+Unknown keys and malformed lines abort startup with an error.
+
+In daemon mode, `in` and `out` are **required** — either in the
+config file or via `--in` / `--out` on the command line.
+
+### systemd unit
+
+An example unit is provided as `sra.service`:
+
+```ini
+[Unit]
+Description=Software-based Real-time Arranger
+After=sound.target
+Wants=sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/sra --daemon --config /etc/sra/sra.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### Install
+
+```sh
+sudo cp build/sra /usr/local/bin/sra
+sudo mkdir -p /etc/sra
+sudo cp sra.conf.example /etc/sra/sra.conf
+sudo nano /etc/sra/sra.conf              # set in/out at minimum
+sudo cp sra.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now sra
+```
+
+### Logs
+
+SRA writes to syslog (ident `sra`). On a systemd host this is
+available through the journal:
+
+```sh
+journalctl -u sra -f
+```
+
+Typical entries:
+
+```
+sra[PID]: started, in=hw:5,0 out=hw:5,1 chord_ch=2 ctrl_offset=0
+sra[PID]: stopped
+```
+
+Errors (missing ports, MIDI open failure) are also logged.
+
+### Stopping
+
+```sh
+sudo systemctl stop sra
+```
+
+The daemon handles `SIGTERM` gracefully: it stops the worker
+threads, releases the MIDI ports, and exits.
 
 ---
 
@@ -215,6 +348,30 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 
 ---
 
+## Migrating Old Style Files
+
+Earlier versions of SRA used different MIDI channels for the
+accompaniment parts (1, 4, 5, 6, 7). The current version uses
+channels 7, 8, 10, 11, 12 (see above). If you have style files
+created for the old channel layout, they must be migrated.
+
+A helper script is provided:
+
+```sh
+./convert_style.sh style0.mid style1.mid style2.mid
+```
+
+It creates a `.bak` backup next to each file, remaps the channels
+in place, and verifies the result. Requires `midicsv` / `csvmidi`
+(`sudo apt install midicsv` on Debian/Ubuntu).
+
+Channel 0 (style header) and channel 9 (drum) are left untouched.
+If the script finds any other channel, it refuses to migrate the
+file and reports an error — this usually means the file is not
+a valid SRA style.
+
+---
+
 ## FAQ
 
 **1. After installation, how do I select a style?**
@@ -246,6 +403,12 @@ where `<NN>` is the style number (0–127). For example, to load
 Hold Shift (`C8`) and press `C#7` to increase tempo, or `Eb7` to decrease
 it. Each press changes the tempo by 1. Alternatively, send
 `F0 7D 07 F7` (Tempo +) or `F0 7D 08 F7` (Tempo −) via SysEx.
+
+**3. My old style files no longer load — why?**
+
+You are probably using style files created for an earlier version of
+SRA, with the old MIDI channel layout. Run `./convert_style.sh` on them
+(see "Migrating Old Style Files" above).
 
 ---
 

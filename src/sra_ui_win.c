@@ -75,8 +75,9 @@ int ui_on_keydown(AppUI *ui, MidiDevice *dev, unsigned int vkey,
     case 'C': midi_device_select_out(dev, -1); break;
     case 'E': midi_device_select_out(dev, +1); break;
 
-    case 'X': if (app->melody_channel > 0)  app->melody_channel--; break;
-    case 'W': if (app->melody_channel < 15) app->melody_channel++; break;
+    /* chord_channel: A decreases, D increases (matching Linux UI). */
+    case 'A': if (app->chord_channel  > 0)  app->chord_channel--;  break;
+    case 'D': if (app->chord_channel  < 15) app->chord_channel++;  break;
 
     case 'O':
         app->ctrl_offset++;

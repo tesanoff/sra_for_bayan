@@ -94,8 +94,8 @@ int ui_on_keydown(AppUI *ui, MidiDevice *dev, unsigned int ch,
     case 'z': midi_device_select_in (dev, -1); break;
     case 'e': midi_device_select_out(dev, +1); break;
     case 'c': midi_device_select_out(dev, -1); break;
-    case 'a': if (app->chord_channel  < 15) app->chord_channel++;  break;
-    case 'd': if (app->chord_channel  > 0)  app->chord_channel--;  break;
+    case 'd': if (app->chord_channel  < 15) app->chord_channel++;  break;
+    case 'a': if (app->chord_channel  > 0)  app->chord_channel--;  break;
     case 'o':
         app->ctrl_offset++;
         if (app->ctrl_offset == 2) app->ctrl_offset = -1;

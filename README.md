@@ -4,6 +4,8 @@
 
 **Fork is maintained by Alexander Tesanov (https://tesanoff.klah.ru).**
 
+The original project is here: https://github.com/imzzdenis/sra
+
 ---
 
 ## Copyright Notice

@@ -19,6 +19,8 @@ All source code in this project is licensed under the **AGPLv3**
 2. A MIDI IN/OUT device
 3. A MIDI keyboard with 49 keys or more
 
+See [BUILD.md](BUILD.md) for build instructions.
+
 ---
 
 ## Overview
@@ -30,7 +32,7 @@ All source code in this project is licensed under the **AGPLv3**
 4. Fully controlled via the MIDI keyboard and/or **SysEx** messages;
    no computer keyboard required.
 5. Runs either interactively (terminal UI) or as a background
-   **daemon** managed by systemd.
+   **daemon** managed by systemd *(Linux only)*.
 6. \* The file `sra_init.hex` in the SRA directory can store MIDI messages for device initialization at startup.
 
 ---
@@ -39,15 +41,15 @@ All source code in this project is licensed under the **AGPLv3**
 
 ```
 sra                                  interactive mode
-sra --daemon [options]               daemon mode
+sra --daemon [options]               daemon mode (Linux only)
 ```
 
 | Option | Description |
 |--------|-------------|
-| `--daemon` | Run as a daemon (no UI, logs via syslog). |
-| `--config PATH` | Config file path. Default: `/etc/sra/sra.conf`. |
-| `--in ADDR` | MIDI IN rawmidi address, e.g. `hw:5,0`. |
-| `--out ADDR` | MIDI OUT rawmidi address, e.g. `hw:5,1`. |
+| `--daemon` | Run as a daemon (no UI, logs via syslog). **Linux only** — rejected with an error on Windows. |
+| `--config PATH` | Config file path. Linux default: `/etc/sra/sra.conf`. Windows default: `%APPDATA%\sra\sra.conf`. |
+| `--in ADDR` | MIDI IN rawmidi address, e.g. `hw:5,0` (Linux). On Windows, use the device name. |
+| `--out ADDR` | MIDI OUT rawmidi address, e.g. `hw:5,1` (Linux). On Windows, use the device name. |
 | `--chord-ch N` | Chord channel, **1-based** (1–16). |
 | `--ctrl-offset N` | Command key zone shift: `-1`, `0`, or `+1`. |
 | `--help` | Show help and exit. |
@@ -99,6 +101,9 @@ Software-based Real-time Arranger v4.06 by ZZ-Denis @ NazoMusic
 ---
 
 ## Daemon Mode
+
+> **Linux only.**  Daemon mode requires systemd.  On Windows,
+> `--daemon` is rejected with an error at startup.
 
 SRA can run as a systemd service, without a terminal.
 
@@ -478,5 +483,3 @@ Typical messages:
 ---
 
 Compatible soundfonts for SRA: https://archive.org/details/SF_zzdenis
-
-

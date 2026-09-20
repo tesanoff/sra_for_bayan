@@ -15,7 +15,7 @@
 
 void sra_config_defaults(SraConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
-    cfg->chord_ch    = 2;                 /* channel 3 (1-based) */
+    cfg->chord_ch    = 3;                 /* 1-based: channel 3 */
     cfg->ctrl_offset = 0;
     strncpy(cfg->config_path, "/etc/sra/sra.conf",
             sizeof(cfg->config_path) - 1);
@@ -38,7 +38,7 @@ void sra_config_print_help(void) {
 "  --config PATH       config file (default: /etc/sra/sra.conf)\n"
 "  --in ADDR           MIDI IN  rawmidi address, e.g. hw:5,0\n"
 "  --out ADDR          MIDI OUT rawmidi address, e.g. hw:5,1\n"
-"  --chord-ch N        chord channel (0-15)\n"
+"  --chord-ch N        chord channel (1-16)\n"
 "  --ctrl-offset N     shift command key zone: -1, 0, or +1\n"
 "  --help              show this help and exit\n"
 "  --version           show version and exit\n"
@@ -110,8 +110,8 @@ int sra_config_parse_args(SraConfig *cfg, int argc, char **argv) {
                 fprintf(stderr, "sra: --chord-ch must be an integer\n");
                 return 1;
             }
-            if (cfg->chord_ch < 0 || cfg->chord_ch > 15) {
-                fprintf(stderr, "sra: --chord-ch must be in 0..15\n");
+            if (cfg->chord_ch < 1 || cfg->chord_ch > 16) {
+                fprintf(stderr, "sra: --chord-ch must be in 1..16\n");
                 return 1;
             }
             cfg->has_chord_ch = 1;
@@ -200,8 +200,8 @@ int sra_config_load(SraConfig *cfg) {
                 fclose(f);
                 return 1;
             }
-            if (v < 0 || v > 15) {
-                fprintf(stderr, "sra: %s:%d: chord_ch must be 0..15\n",
+            if (v < 1 || v > 16) {
+                fprintf(stderr, "sra: %s:%d: chord_ch must be 1..16\n",
                         cfg->config_path, lineno);
                 fclose(f);
                 return 1;

@@ -16,7 +16,7 @@ typedef struct {
     int  show_version;          /* 1 = print --version and exit         */
     char in_addr[64];           /* MIDI IN  rawmidi address, e.g. hw:5,0 */
     char out_addr[64];          /* MIDI OUT rawmidi address, e.g. hw:5,1 */
-    int  chord_ch;              /* chord channel 0..15                  */
+    int  chord_ch;              /* chord channel, 1-based (1..16)       */
     int  ctrl_offset;           /* -1, 0, +1 (same as UI Ctrl Offset)   */
     char config_path[256];      /* path to config file                   */
 

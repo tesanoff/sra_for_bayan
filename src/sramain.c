@@ -82,7 +82,7 @@ static int run_daemon(SraConfig *cfg) {
     signal(SIGINT,  handle_signal);
     signal(SIGHUP,  SIG_IGN);
 
-    g_app.chord_channel = cfg->chord_ch;
+    g_app.chord_channel = cfg->chord_ch - 1;   /* config is 1-based */
     g_app.ctrl_offset   = cfg->ctrl_offset;
 
     midi_device_probe(&g_midi);
@@ -108,7 +108,7 @@ static int run_daemon(SraConfig *cfg) {
 
     syslog(LOG_INFO, "started, in=%s out=%s chord_ch=%d ctrl_offset=%d",
            cfg->in_addr, cfg->out_addr,
-           g_app.chord_channel, g_app.ctrl_offset);
+           cfg->chord_ch, g_app.ctrl_offset);
 
     while (g_engine.running) pause();
 
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
     /* Apply values from config / command line.  Remaining defaults
        (chord_channel = 2, ctrl_offset = 0) are set by
        sra_config_defaults(). */
-    g_app.chord_channel = cfg.chord_ch;
+    g_app.chord_channel = cfg.chord_ch - 1;   /* config is 1-based */
     g_app.ctrl_offset   = cfg.ctrl_offset;
 
     /* If --in / --out (or in/out from config) are set, resolve them

@@ -11,10 +11,13 @@
 in  = hw:5,0
 out = hw:5,1
 
-# Channel reserved for chord input (0..15).  Must match the channel
-# your keyboard sends left-hand chords on.  Displayed as +1 in the UI.
-# Default: 2  (i.e. MIDI channel 3).
-chord_ch = 2
+# Channel reserved for chord input.
+# Range: 1..16 (1-based, matching the number shown in the UI as
+# "Chord Ch").  Default: 3.
+#
+# Internally SRA stores this as 0..15, but the configuration file
+# and the --chord-ch command line option always use 1..16.
+chord_ch = 3
 
 # Command key zone shift: -1, 0, or +1.  Matches the [O] parameter
 # in the interactive setup screen.  Use +1 for 76-key keyboards,

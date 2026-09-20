@@ -48,12 +48,18 @@ sra --daemon [options]               daemon mode
 | `--config PATH` | Config file path. Default: `/etc/sra/sra.conf`. |
 | `--in ADDR` | MIDI IN rawmidi address, e.g. `hw:5,0`. |
 | `--out ADDR` | MIDI OUT rawmidi address, e.g. `hw:5,1`. |
-| `--chord-ch N` | Chord channel (0–15). |
+| `--chord-ch N` | Chord channel, **1-based** (1–16). |
 | `--ctrl-offset N` | Command key zone shift: `-1`, `0`, or `+1`. |
 | `--help` | Show help and exit. |
 | `--version` | Show version and exit. |
 
 Command-line options override values from the config file.
+
+> All channel numbers in the config file and on the command line are
+> **1-based** (1–16), matching the number shown in the interactive
+> setup screen as *Chord Ch*.  Internally SRA converts them to 0–15.
+> SysEx control messages, by contrast, use **0-based** channel numbers
+> (see the SysEx section).
 
 In interactive mode, `--in` and `--out` set the *initial* port
 selection; you can still change it with `[Q]/[Z]` and `[E]/[C]`.
@@ -105,7 +111,7 @@ Place `/etc/sra/sra.conf` with the following content (see
 # SRA configuration file.
 in  = hw:5,0
 out = hw:5,1
-chord_ch = 2
+chord_ch = 3
 ctrl_offset = 0
 ```
 
@@ -113,8 +119,9 @@ Format: `key = value`, one per line. `#` starts a comment.
 Recognised keys: `in`, `out`, `chord_ch`, `ctrl_offset`.
 Unknown keys and malformed lines abort startup with an error.
 
-In daemon mode, `in` and `out` are **required** — either in the
-config file or via `--in` / `--out` on the command line.
+`chord_ch` is **1-based** (1–16), matching the value shown in the UI.
+In daemon mode, `in` and `out` are **required** — either in the config
+file or via `--in` / `--out` on the command line.
 
 ### systemd unit
 
@@ -160,7 +167,7 @@ journalctl -u sra -f
 Typical entries:
 
 ```
-sra[PID]: started, in=hw:5,0 out=hw:5,1 chord_ch=2 ctrl_offset=0
+sra[PID]: started, in=hw:5,0 out=hw:5,1 chord_ch=3 ctrl_offset=0
 sra[PID]: stopped
 ```
 
@@ -253,7 +260,14 @@ F0 7D <CMD> [<DATA...>] F7
 | `0E` | Change Mode | — |
 | `20` | Load Style | style number (0–127) |
 | `50` | Enable / disable Note-On commands | `00` = off, `01` = on |
-| `51` | Set chord channel | channel (0–15) |
+| `51` | Set chord channel | channel, **0-based** (0–15) |
+
+> **Channel numbering.** The SysEx command `0x51` uses **0-based**
+> channel numbers (0–15), i.e. `00` = MIDI channel 1, `02` = MIDI
+> channel 3.  This is different from the config file and `--chord-ch`,
+> which use 1-based numbers.  The reason: SysEx is a low-level
+> protocol and MIDI convention for raw values is 0-based; the config
+> file, by contrast, mirrors what the user sees in the UI.
 
 ### Examples
 
@@ -346,14 +360,19 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 > send accompaniment data to them, and ignores any incoming MIDI
 > messages on the arranger-owned channels Ch8–Ch15.
 
+> **Note on this fork.** The channel layout above matches the current
+> version of this fork.  Style files created for the original project
+> by ZZ-Denis used different channels (1, 4, 5, 6, 7) and must be
+> migrated — see "Migrating Old Style Files" below.
+
 ---
 
 ## Migrating Old Style Files
 
 Earlier versions of SRA used different MIDI channels for the
 accompaniment parts (1, 4, 5, 6, 7). The current version uses
-channels 7, 8, 10, 11, 12 (see above). If you have style files
-created for the old channel layout, they must be migrated.
+channels 7, 8, 10, 11, 12 (0-based; see above). If you have style
+files created for the old channel layout, they must be migrated.
 
 A helper script is provided:
 
@@ -459,3 +478,5 @@ Typical messages:
 ---
 
 Compatible soundfonts for SRA: https://archive.org/details/SF_zzdenis
+
+

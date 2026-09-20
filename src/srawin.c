@@ -6,6 +6,7 @@
 #include "midi_msg.h"
 #include "sra_ui.h"
 #include "sra_engine.h"
+#include "sra_config.h"
 
 /* ---- module-level singletons ---- */
 
@@ -13,6 +14,7 @@ static MidiDevice  g_midi;
 static AppUI       g_ui;
 static AppState    g_app;
 static SraEngine   g_engine;
+static SraConfig   g_cfg;
 
 static const char *const APP_CLASS = "MyWndClass";
 static const char *const APP_TITLE =
@@ -66,13 +68,23 @@ static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
         }
         return 0;
 
-    case WM_CREATE:
+    case WM_CREATE: {
+        CREATESTRUCT *cs  = (CREATESTRUCT *)lParam;
+        SraConfig    *cfg = (SraConfig *)cs->lpCreateParams;
+
         midi_device_probe(&g_midi);
         engine_init(&g_engine, &g_midi, (void *)hwnd);
         ui_init(&g_ui, hwnd);
+
+        if (cfg) {
+            g_app.chord_channel = cfg->chord_ch - 1;   /* config is 1-based */
+            g_app.ctrl_offset   = cfg->ctrl_offset;
+        }
+
         if (g_midi.in_count > 0 && g_midi.out_count > 0)
             g_app.status = 1;
         return 0;
+    }
 
     case WM_PAINT:
         hdc = BeginPaint(hwnd, &ps);
@@ -105,6 +117,43 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev,
 
     (void)hPrev; (void)lpCmd;
 
+    /* Parse command line.  MinGW provides __argc / __argv. */
+    sra_config_defaults(&g_cfg);
+    if (sra_config_parse_args(&g_cfg, __argc, __argv) != 0) {
+        MessageBox(NULL, "Invalid command line.\n"
+                         "Try --help for usage.",
+                   "SRA", MB_OK | MB_ICONERROR);
+        return 1;
+    }
+
+    if (g_cfg.show_help) {
+        MessageBox(NULL,
+            "sra — Software-based Real-time Arranger\n"
+            "\n"
+            "Options:\n"
+            "  --config PATH       config file path\n"
+            "  --chord-ch N        chord channel (1-16)\n"
+            "  --ctrl-offset N     command zone shift: -1, 0, +1\n"
+            "  --help              show this help\n"
+            "  --version           show version\n"
+            "\n"
+            "(Daemon mode is not supported on Windows.)",
+            "SRA Help", MB_OK | MB_ICONINFORMATION);
+        return 0;
+    }
+
+    if (g_cfg.show_version) {
+        MessageBox(NULL, "sra 4.06 (libsracore 1.3)",
+                   "SRA Version", MB_OK | MB_ICONINFORMATION);
+        return 0;
+    }
+
+    if (sra_config_load(&g_cfg) != 0) {
+        MessageBox(NULL, "Invalid config file. See console for details.",
+                   "SRA", MB_OK | MB_ICONERROR);
+        return 1;
+    }
+
     wc.cbSize        = sizeof(WNDCLASSEX);
     wc.style         = 0;
     wc.lpfnWndProc   = WndProc;
@@ -130,7 +179,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev,
         center_pos(wnd_W, GetSystemMetrics(SM_CXSCREEN)),
         center_pos(wnd_H, GetSystemMetrics(SM_CYSCREEN)),
         wnd_W, wnd_H,
-        NULL, NULL, hInst, NULL);
+        NULL, NULL, hInst, &g_cfg);
 
     if (!hwnd) {
         MessageBox(NULL, "Cannot create window!", "Error!",

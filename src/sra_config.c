@@ -17,8 +17,21 @@ void sra_config_defaults(SraConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
     cfg->chord_ch    = 3;                 /* 1-based: channel 3 */
     cfg->ctrl_offset = 0;
+
+#ifdef _WIN32
+    /* Default config path on Windows: %APPDATA%\sra\sra.conf.
+       If APPDATA is not set, leave the path empty (no default). */
+    {
+        const char *appdata = getenv("APPDATA");
+        if (appdata && *appdata) {
+            snprintf(cfg->config_path, sizeof(cfg->config_path),
+                     "%s\\sra\\sra.conf", appdata);
+        }
+    }
+#else
     strncpy(cfg->config_path, "/etc/sra/sra.conf",
             sizeof(cfg->config_path) - 1);
+#endif
 }
 
 /* ------------------------------------------------------------------ */
@@ -73,7 +86,14 @@ int sra_config_parse_args(SraConfig *cfg, int argc, char **argv) {
     for (i = 1; i < argc; i++) {
         const char *a = argv[i];
 
-        if      (strcmp(a, "--daemon")  == 0) { cfg->daemon = 1; }
+        if      (strcmp(a, "--daemon")  == 0) {
+#ifdef _WIN32
+            fprintf(stderr, "sra: daemon mode is not supported on Windows\n");
+            return 1;
+#else
+            cfg->daemon = 1;
+#endif
+        }
         else if (strcmp(a, "--help")    == 0) { cfg->show_help = 1; }
         else if (strcmp(a, "--version") == 0) { cfg->show_version = 1; }
 

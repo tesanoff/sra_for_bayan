@@ -209,7 +209,7 @@ $(LIBDIR)/libsracore.a.win: $(LIBDIR)/sracore.c \
 	         $(LIBDIR)/sracore_sysex.win.o
 
 win-clean:
-	rm -f $(WIN_OBJS) $(WIN_TARGET) $(LIBDIR)/*.win.o \
+	rm -f $(WIN_OBJS) $(LIBDIR)/*.win.o \
 	      $(LIBDIR)/libsracore.a.win
 
 # Remove both Linux and Windows build artefacts.

@@ -25,6 +25,32 @@ See [BUILD.md](BUILD.md) for build instructions.
 
 ---
 
+## Note Naming Convention
+
+This document uses **C5 = Middle C** (MIDI note 60) throughout, which
+is the convention used by the original SRA documentation.  Under this
+convention the MIDI note numbers map to note names as follows:
+
+| MIDI note | This document | Scientific pitch notation (C4 = Middle C) |
+|-----------|---------------|--------------------------------------------|
+| 60        | C5            | C4                                         |
+| 72        | C6            | C5                                         |
+| 84        | C7            | C6                                         |
+| 94        | Bb7           | Bb6                                        |
+| 96        | C8            | C7                                         |
+
+> **There is no single standard for octave numbering.**  The MIDI
+> specification defines note numbers and fixes note 60 as Middle C,
+> but it does not prescribe how octaves are *named*.  Different
+> manufacturers and DAWs use C3, C4, or C5 for Middle C.  When in
+> doubt, refer to the MIDI note number, which is unambiguous.
+>
+> For example, the Start command is MIDI note **94**.  In this
+> document it is written `Bb7`; in scientific pitch notation it would
+> be `Bb6`.  It is the same note.
+
+---
+
 ## Overview
 
 1. Provides real-time intelligent auto-accompaniment (simulates a live arranger keyboard).
@@ -198,27 +224,29 @@ threads, releases the MIDI ports, and exits.
 > be superseded by the SysEx protocol in future versions. New setups
 > should prefer SysEx control.
 
-> **C5 = Middle C**
+> **Note names** follow the convention described at the top of this
+> document (**C5 = Middle C**).  The raw MIDI note number is given in
+> parentheses for reference.
 
-| Key Combination | Function |
-|-----------------|----------|
-| `C8` | **Shift** (same role as the Shift key on a computer keyboard) |
-| `B7` | Fill to Original |
-| `A7` | Fill to Variation |
-| `Bb7` | Start |
-| `Ab7` | Intro / Ending |
-| `Shift + F#7` | Fade Out |
-| `Shift + C#7` | Tempo + |
-| `Shift + Eb7` | Tempo − |
-| `Shift + G7` | Change Mode |
-| `Shift + F7` | Toggle M.Bass |
-| `Shift + E7` | Toggle Acc. |
-| `Shift + D7` | Toggle Acc.Bass |
-| `Shift + C7` | Toggle Drum |
-| `Shift + B7` | To Original |
-| `Shift + A7` | To Variation |
-| `Shift + Bb7` | Sync Start |
-| `Shift + Ab7` | *(obsolete — Function mode has been removed)* |
+| Key Combination | MIDI note | Function |
+|-----------------|-----------|----------|
+| `C8` | 96 | **Shift** (same role as the Shift key on a computer keyboard) |
+| `B7` | 95 | Fill to Original |
+| `A7` | 93 | Fill to Variation |
+| `Bb7` | 94 | Start |
+| `Ab7` | 92 | Intro / Ending |
+| `Shift + F#7` | 90 | Fade Out |
+| `Shift + C#7` | 85 | Tempo + |
+| `Shift + Eb7` | 87 | Tempo − |
+| `Shift + G7` | 91 | Change Mode |
+| `Shift + F7` | 89 | Toggle M.Bass |
+| `Shift + E7` | 88 | Toggle Acc. |
+| `Shift + D7` | 86 | Toggle Acc.Bass |
+| `Shift + C7` | 84 | Toggle Drum |
+| `Shift + B7` | 95 | To Original |
+| `Shift + A7` | 93 | To Variation |
+| `Shift + Bb7` | 94 | Sync Start |
+| `Shift + Ab7` | 92 | *(obsolete — Function mode has been removed)* |
 
 ---
 
@@ -404,11 +432,12 @@ a valid SRA style.
 
 After installation you will have one style file: `style0.mid`, which loads
 automatically when SRA starts. To begin on a 61-key keyboard, press the
-highest Bb (`Bb7`) to start the rhythm, or send `F0 7D 01 F7` via SysEx.
+highest Bb (`Bb7`, MIDI note 94) to start the rhythm, or send
+`F0 7D 01 F7` via SysEx.
 
-For **Sync Start**, hold the highest C (`C8`) — keep it held — then press
-`Bb7` and release (or send `F0 7D 03 F7`). The rhythm will start as soon
-as you play a chord.
+For **Sync Start**, hold the highest C (`C8`, MIDI note 96) — keep it
+held — then press `Bb7` and release (or send `F0 7D 03 F7`). The rhythm
+will start as soon as you play a chord.
 
 Chords are detected only on the channel selected as **Chord Ch** in the
 setup screen. A 3-note recognition algorithm is used, supporting chord
@@ -426,9 +455,10 @@ where `<NN>` is the style number (0–127). For example, to load
 
 **2. After selecting a style, how do I adjust the tempo?**
 
-Hold Shift (`C8`) and press `C#7` to increase tempo, or `Eb7` to decrease
-it. Each press changes the tempo by 1. Alternatively, send
-`F0 7D 07 F7` (Tempo +) or `F0 7D 08 F7` (Tempo −) via SysEx.
+Hold Shift (`C8`, MIDI note 96) and press `C#7` (MIDI note 85) to
+increase tempo, or `Eb7` (MIDI note 87) to decrease it. Each press
+changes the tempo by 1. Alternatively, send `F0 7D 07 F7` (Tempo +)
+or `F0 7D 08 F7` (Tempo −) via SysEx.
 
 **3. My old style files no longer load — why?**
 

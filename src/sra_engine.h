@@ -12,7 +12,7 @@
 typedef struct {
 #ifdef _WIN32
     CRITICAL_SECTION cs;
-    DWORD            engine_tid;
+    HANDLE           engine_thread;   /* for WaitForSingleObject */
     LARGE_INTEGER    freq;       /* QueryPerformanceFrequency result */
     HWND             hwnd;       /* for chord/tempo repaint callbacks */
 #else

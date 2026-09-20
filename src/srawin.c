@@ -26,6 +26,14 @@ static int center_pos(UINT window_size, UINT screen_size) {
     return (int)((screen_size / 2) - (window_size / 2));
 }
 
+/* ---- SysEx callback (called from midi_device_win.c) ---- */
+
+static void on_sysex(const unsigned char *data, int len) {
+    EnterCriticalSection(&g_engine.cs);
+    sracore_sysex_in(g_engine.sra, (const SRABYTE *)data, len);
+    LeaveCriticalSection(&g_engine.cs);
+}
+
 /* ---- window procedure ---- */
 
 static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
@@ -47,10 +55,15 @@ static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
         LeaveCriticalSection(&g_engine.cs);
         return 0;
 
+    case MM_MIM_LONGDATA:
+        midi_device_win_handle_longdata(&g_midi, (LONG)lParam);
+        return 0;
+
     case WM_KEYDOWN:
         if (g_app.status == 1) {
             if (ui_on_keydown(&g_ui, &g_midi, wParam, &g_app)) {
                 /* 'S' pressed: open devices and start the engine. */
+                midi_device_win_set_sysex_cb(on_sysex);
                 err = midi_device_open(&g_midi, (void *)hwnd);
                 if (err) {
                     char msg[32];
@@ -97,6 +110,12 @@ static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
         return 0;
 
     case WM_DESTROY:
+        /* Stop the engine and release MIDI, then quit. */
+        g_engine.running = 0;
+        if (g_engine.engine_thread)
+            WaitForSingleObject(g_engine.engine_thread, 5000);
+        midi_device_close(&g_midi);
+        engine_destroy(&g_engine);
         PostQuitMessage(0);
         return 0;
 

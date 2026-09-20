@@ -65,4 +65,21 @@ int midi_device_open(MidiDevice *dev, void *platform_ctx);
    never opened (does nothing). */
 void midi_device_close(MidiDevice *dev);
 
+#ifdef _WIN32
+/* ---- Windows-only SysEx input ---------------------------------- */
+
+/* Register a callback invoked for each complete SysEx message
+   received on the MIDI IN device.  The callback is called from
+   inside WndProc (i.e. from the main thread), so it must not
+   block for long. */
+void midi_device_win_set_sysex_cb(void (*cb)(const unsigned char *data,
+                                             int len));
+
+/* Called from WndProc on MM_MIM_LONGDATA.  Extracts the SysEx data
+   from the MIDIHDR, invokes the registered callback, and re-queues
+   the buffer for the next message. */
+void midi_device_win_handle_longdata(MidiDevice *dev, LONG lParam);
+
+#endif /* _WIN32 */
+
 #endif /* MIDI_DEVICE_H */

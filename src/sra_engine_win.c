@@ -49,6 +49,7 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx) {
         MessageBox(0, "Out of memory", "SRA", MB_OK | MB_ICONERROR);
         exit(1);
     }
+    eng->running = 1;
     InitializeCriticalSection(&eng->cs);
 }
 
@@ -69,7 +70,8 @@ void engine_start(SraEngine *eng, int offset, int chord_ch, int silent) {
     sracore_init(eng->sra);
 
     SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-    if (!CreateThread(NULL, 0, engine_thread, eng, 0, &eng->engine_tid))
+    eng->engine_thread = CreateThread(NULL, 0, engine_thread, eng, 0, NULL);
+    if (!eng->engine_thread)
         exit(0);
 }
 
@@ -89,7 +91,7 @@ DWORD WINAPI engine_thread(LPVOID param) {
 
     SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
 
-    while (1) {
+    while (eng->running) {
         last_usec = sracore_get_now_usec(eng->sra);
 
         EnterCriticalSection(&eng->cs);

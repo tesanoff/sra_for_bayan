@@ -5,6 +5,7 @@
 #  include <windows.h>
 #  include <winuser.h>
 #  include <mmsystem.h>
+#  include <signal.h>
 #else
 #  include <stdint.h>
 #  include <unistd.h>

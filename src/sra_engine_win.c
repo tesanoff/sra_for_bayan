@@ -52,9 +52,9 @@ void engine_init(SraEngine *eng, MidiDevice *midi, void *platform_ctx) {
     InitializeCriticalSection(&eng->cs);
 }
 
-void engine_start(SraEngine *eng, int key_ch, int offset, int silent) {
+void engine_start(SraEngine *eng, int offset, int chord_ch, int silent) {
     SraCallbacks cb;
-    (void)silent;   /* Windows path does not use silent yet */
+    (void)silent;   /* daemon mode is not supported on Windows */
     QueryPerformanceFrequency(&eng->freq);
 
     cb.on_chord  = cb_chord;
@@ -64,7 +64,8 @@ void engine_start(SraEngine *eng, int key_ch, int offset, int silent) {
     cb.userdata  = eng;
 
     sracore_set_callbacks(eng->sra, &cb);
-    sracore_set_channel(eng->sra, key_ch, offset);
+    sracore_set_offset(eng->sra, offset);
+    sracore_set_chord_channel(eng->sra, chord_ch);
     sracore_init(eng->sra);
 
     SetPriorityClass(GetCurrentProcess(), REALTIME_PRIORITY_CLASS);

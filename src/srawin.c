@@ -57,8 +57,9 @@ static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
                     exit(err);
                 }
                 engine_start(&g_engine,
-                             g_app.melody_channel,
-                             12 * g_app.ctrl_offset);
+                             12 * g_app.ctrl_offset,
+                             g_app.chord_channel,
+                             0 /* interactive: UI callbacks enabled */);
                 g_app.status = 3;
                 ui_refresh(&g_ui);
             }

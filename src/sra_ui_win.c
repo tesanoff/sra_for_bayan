@@ -38,8 +38,8 @@ static void paint_setup_rows(AppUI *ui, MidiDevice *dev, AppState *app,
     TextOut(hdc, 10, 30, "[E][C] MIDI OUT:", 16);
     paint_str(ui, hdc, 160, 30, dev->out_caps.szPname);
 
-    TextOut(hdc, 10, 50, "[W][X] Channel:", 15);
-    paint_int(ui, hdc, 160, 50, app->melody_channel + 1);
+    TextOut(hdc, 10, 50, "[A][D] Chord Ch:", 16);
+    paint_int(ui, hdc, 160, 50, app->chord_channel + 1);
 
     TextOut(hdc, 10, 70, "[O] Ctrl Offset:", 16);
     paint_int(ui, hdc, 160, 70, app->ctrl_offset);

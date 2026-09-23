@@ -61,7 +61,7 @@ convention the MIDI note numbers map to note names as follows:
    no computer keyboard required.
 5. Runs either interactively (terminal UI) or as a background
    **daemon** managed by systemd *(Linux only)*.
-6. \* The file `sra_init.hex` in the SRA directory can store MIDI messages for device initialization at startup.
+6. \* The file `sra_init.hex` in the current working directory can store MIDI messages for device initialization at startup.
 
 ---
 
@@ -190,6 +190,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now sra
 ```
 
+> **Note.**  Some systemd builds do not include `/usr/local/bin`
+> in the default service `$PATH`.  If the service fails with
+> `status=203/EXEC`, either copy the binary to `/usr/bin/sra`
+> or use the full path in `ExecStart=`.
+
 ### Logs
 
 SRA writes to syslog (ident `sra`). On a systemd host this is
@@ -311,7 +316,8 @@ F0 7D <CMD> [<DATA...>] F7
 ### Master Volume (CMD `0x52`)
 
 Sets the Channel Volume (`CC7`) on **all arranger-owned channels**:
-`LOWER`, `M.Bass`, `Acc1`–`Acc4`, `Acc.Bass`, and `Drum`.
+`LOWER`, `M.Bass`, `Acc1`–`Acc5`, `Acc.Bass`, `Drum`, and `Phrase`
+(10 channels total).
 
 ```
 F0 7D 52 <VOL> F7
@@ -385,6 +391,11 @@ amidi -p hw:5,2 -S 'F0 7D 01 F7'
 ```
 
 On Windows, use `sendmidi` or a similar MIDI utility.
+
+> **PipeWire.**  On distros where PipeWire replaces the classic
+> ALSA/JACK MIDI stack, `amidi` and `aconnect` may not see your
+> devices.  Use the PipeWire tools instead: `pw-link`, `qpwgraph`,
+> or `helvum` for routing, and `pw-cli` for inspection.
 
 ---
 
@@ -503,6 +514,11 @@ F0 7D 20 <NN> F7
 
 where `<NN>` is the style number (0–127). For example, to load
 `style36.mid`, send `F0 7D 20 24 F7` (0x24 = 36).
+
+By default SRA looks for style files in the current working
+directory.  To keep them elsewhere, pass `--styles-dir PATH`
+on the command line, or set `styles_dir = PATH` in the config
+file (command line wins).
 
 **2. After selecting a style, how do I adjust the tempo?**
 

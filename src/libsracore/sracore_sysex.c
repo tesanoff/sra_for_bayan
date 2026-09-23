@@ -32,6 +32,7 @@
 #define SX_LOAD_STYLE       0x20
 #define SX_NOTE_CMD_ENABLE  0x50
 #define SX_SET_CHORD_CH     0x51
+#define SX_MASTER_VOLUME    0x52
 
 /* ------------------------------------------------------------------ */
 /* Error reporting (non-fatal)                                          */
@@ -144,6 +145,26 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
         if (datalen != 1) { sx_error("CMD 0x51 requires 1 data byte", cmd, datalen); return; }
         if (d0 > 15)      { sx_error("CMD 0x51 data out of range (0..15)", cmd, datalen); return; }
         sra->chord_ch = d0;
+        break;
+
+    /* ---- Master volume ------------------------------------------- */
+    case SX_MASTER_VOLUME:
+        if (datalen != 1) { sx_error("CMD 0x52 requires 1 data byte", cmd, datalen); return; }
+        if (d0 > 127)     { sx_error("CMD 0x52 data out of range (0..127)", cmd, datalen); return; }
+        sra->master_vol = d0;
+        /* Apply immediately: CC7 = <VOL> on all arranger-owned channels.
+           Channels: LOWER, MBASS, ACC1..ACC4, ACCBASS, DRUM. */
+        {
+            static const SRABYTE CH[] = {
+                LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACCBASS, DRUM
+            };
+            int i;
+            for (i = 0; i < 8; i++) {
+                sra_append(sra, (SRABYTE)(0xb0 | CH[i]));
+                sra_append(sra, 0x07);          /* CC7 = Channel Volume */
+                sra_append(sra, d0);
+            }
+        }
         break;
 
     /* ---- Note-On command enable ---------------------------------- */

@@ -127,6 +127,11 @@ struct SraCore {
     /* Part on/off flags */
     SRABYTE mbass_vf, acc_vf, acc_bass_vf, drum_vf;
 
+    /* Master volume for arranger-owned channels (CC7), 0..127.
+       Set via SysEx CMD 0x52; used by sra_reset() and applied
+       immediately when the command is received. */
+    SRABYTE master_vol;
+
     /* Transport / arrangement flags */
     SRABYTE clock_f, var_f, sync_f, start_f, fill_f;
     SRABYTE ief, ief2, shift_f, mode, func;

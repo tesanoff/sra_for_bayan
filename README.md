@@ -296,6 +296,7 @@ F0 7D <CMD> [<DATA...>] F7
 | `20` | Load Style | style number (0–127) |
 | `50` | Enable / disable Note-On commands | `00` = off, `01` = on |
 | `51` | Set chord channel | channel, **0-based** (0–15) |
+| `52` | Master Volume | volume (0–127) |
 
 > **Channel numbering.** The SysEx command `0x51` uses **0-based**
 > channel numbers (0–15), i.e. `00` = MIDI channel 1, `02` = MIDI
@@ -303,6 +304,28 @@ F0 7D <CMD> [<DATA...>] F7
 > which use 1-based numbers.  The reason: SysEx is a low-level
 > protocol and MIDI convention for raw values is 0-based; the config
 > file, by contrast, mirrors what the user sees in the UI.
+
+### Master Volume (CMD `0x52`)
+
+Sets the Channel Volume (`CC7`) on **all arranger-owned channels**:
+`LOWER`, `M.Bass`, `Acc1`–`Acc4`, `Acc.Bass`, and `Drum`.
+
+```
+F0 7D 52 <VOL> F7
+```
+
+`<VOL>` is a 7-bit value (0–127).  The value is applied immediately and
+also stored in the engine, so it survives subsequent Start / Stop cycles
+(`sra_reset()` re-applies it instead of the default 100).
+
+Fade Out is unaffected: it operates on `CC11` (Expression) and continues
+to work on top of the current master volume.
+
+Example — set master volume to 80:
+
+```
+F0 7D 52 50 F7
+```
 
 ### Examples
 
@@ -503,6 +526,8 @@ Typical messages:
 | `CMD 0x50 data must be 0 or 1` | Value other than 0 or 1 |
 | `CMD 0x51 requires 1 data byte` | Set Chord Channel without a value |
 | `CMD 0x51 data out of range (0..15)` | Channel > 15 |
+| `CMD 0x52 requires 1 data byte` | Master Volume without a value |
+| `CMD 0x52 data out of range (0..127)` | Volume > 127 |
 
 ---
 

@@ -130,7 +130,7 @@ void sra_reset(SraCore *sra, int full) {
             sra_append(sra, PARTS[i].rev);
             sra_append(sra, 0xb0 | PARTS[i].ch);
             sra_append(sra, 0x07);
-            sra_append(sra, 100);
+            sra_append(sra, sra->master_vol);
         }
         /* Default patches: LOWER=49 (strings), MBASS=35 (fretless bass) */
         sra_append(sra, 0xc0 | LOWER); sra_append(sra, 49);

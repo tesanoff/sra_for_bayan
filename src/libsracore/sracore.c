@@ -18,6 +18,7 @@ SraCore *sracore_create(void) {
     sra->acc_bass_vf   = 1;
     sra->drum_vf       = 1;
     sra->note_cmd_enabled = 1;   /* Note-On commands active by default */
+    sra->master_vol       = 100; /* CC7 default, matches sra_reset() */
     sra->chord_ch         = 2;   /* default: channel 3 (0-based) */
     sra->chord_debounce   = 0;
     strcpy(sra->style_name, "style");

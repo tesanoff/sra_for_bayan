@@ -22,9 +22,12 @@
 /* MIDI channel assignments used by the arranger                        */
 /* ------------------------------------------------------------------ */
 /* Output channels reserved for arranger accompaniment.
-   Channels 0..6 and 15 are left free for live playing;
+   Channels 0..5 are left free for live playing.
+   ACC5 (0x06) and PHRASE (0x0f) are arranger-owned and are
+   processed exactly like ACC1..ACC4.
    DRUM stays on the GM drum channel 9 (1-based 10). */
 #define LOWER    0x0e
+#define PHRASE   0x0f
 #define MBASS    0x0d
 #define ACC1     0x08
 #define ACC2     0x0a
@@ -32,6 +35,7 @@
 #define ACC4     0x0c
 #define ACCBASS  0x07
 #define DRUM     0x09
+#define ACC5     0x06
 
 /* ------------------------------------------------------------------ */
 /* Control command note numbers (relative to sra->offset)               */

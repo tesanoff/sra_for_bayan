@@ -108,9 +108,11 @@ void sracore_midi_in(SraCore *sra,
     case ACC2:
     case ACC3:
     case ACC4:
+    case ACC5:
     case MBASS:
     case DRUM:
     case LOWER:
+    case PHRASE:
         return;
     default:
         break;

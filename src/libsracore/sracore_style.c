@@ -100,12 +100,14 @@ void sra_reset(SraCore *sra, int full) {
     int i;
     SRABYTE m;
     FILE *f;
-    static const SRABYTE INIT_CH[] = {ACC1, ACC2, ACC3, ACC4, ACCBASS};
+    static const SRABYTE INIT_CH[] = {
+        ACC1, ACC2, ACC3, ACC4, ACC5, PHRASE, ACCBASS
+    };
 
     for (i = 0; i < 16; i++) sra->prog[i][0] = 0xff;
 
     /* Pitch-wheel centre on accent channels */
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 7; i++) {
         sra_append(sra, 0xe0 | INIT_CH[i]);
         sra_append(sra, 0x00);
         sra_append(sra, 0x40);
@@ -119,9 +121,10 @@ void sra_reset(SraCore *sra, int full) {
             {LOWER,   127, 80 }, {MBASS,   127, 30 },
             {ACC1,    127, 60 }, {ACC2,    127, 60 },
             {ACC3,    127, 60 }, {ACC4,    127, 60 },
+            {ACC5,    127, 60 }, {PHRASE,  127, 60 },
             {ACCBASS, 127, 40 }, {DRUM,    127, 70 },
         };
-        for (i = 0; i < 8; i++) {
+        for (i = 0; i < 10; i++) {
             sra_append(sra, 0xb0 | PARTS[i].ch);
             sra_append(sra, 0x0b);
             sra_append(sra, PARTS[i].vol);
@@ -283,7 +286,8 @@ int sra_load_style(SraCore *sra, int style_num) {
         {
             SRABYTE ch = sra->last_sty_msg & 0x0f;
             if (ch != ACC1 && ch != ACC2 && ch != ACC3 &&
-                ch != ACC4  && ch != ACCBASS && ch != DRUM) {
+                ch != ACC4 && ch != ACC5 && ch != PHRASE &&
+                ch != ACCBASS && ch != DRUM) {
                 fclose(f); sra_do_error(sra, 4); return 0;
             }
         }

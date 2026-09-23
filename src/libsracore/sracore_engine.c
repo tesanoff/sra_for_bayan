@@ -34,7 +34,8 @@ void sra_count_note(SraCore *sra) {
             c = sra->sty_session_note[kind][sess][stime-1][i][0];
             d = sra->sty_session_note[kind][sess][stime-1][i][1];
             e = sra->sty_session_note[kind][sess][stime-1][i][2];
-            if ((c & 0x0f) == ACC3 || (c & 0x0f) == ACC4) {
+            if ((c & 0x0f) == ACC3 || (c & 0x0f) == ACC4 ||
+                (c & 0x0f) == ACC5 || (c & 0x0f) == PHRASE) {
                 e  = (SRABYTE)(e * sra->acc_vf * sra->chord_c);
                 d += sra->chord_v[d % 12];
                 d += sra->chordd;
@@ -68,7 +69,8 @@ void sra_count_note(SraCore *sra) {
             e = buf[base + (++sra->sty_index)];
             if ((sra->last_sty_msg & 0xf0) == 0x90) {
                 SRABYTE ch = sra->last_sty_msg & 0x0f;
-                if (ch == ACC3 || ch == ACC4) {
+                if (ch == ACC3 || ch == ACC4 ||
+                    ch == ACC5 || ch == PHRASE) {
                     e  = (SRABYTE)(e * sra->acc_vf * sra->chord_c);
                     d += sra->chord_v[d % 12];
                     d += sra->chordd;
@@ -155,7 +157,8 @@ void sra_dump_sty(SraCore *sra) {
             e = buf[base + (++sra->sty_index)];
             if ((sra->last_sty_msg & 0xf0) == 0x90) {
                 SRABYTE ch = sra->last_sty_msg & 0x0f;
-                if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4) {
+                if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
+                    ch==ACC5||ch==PHRASE) {
                     e  = (SRABYTE)(e * sra->acc_vf * sra->chord_c);
                     d += sra->chord_v[d % 12];
                     d += sra->chordd;
@@ -286,12 +289,14 @@ void sra_check_com(SraCore *sra) {
 /* ------------------------------------------------------------------ */
 
 static void emit_volume_all(SraCore *sra, SRABYTE vol) {
-    static const SRABYTE CH[] = {LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACCBASS, DRUM};
+    static const SRABYTE CH[] = {
+        LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACC5, PHRASE, ACCBASS, DRUM
+    };
     int i;
     if (!sra->voice_lock) {
         sra_append(sra, 0xb0 | LOWER); sra_append(sra, 0x0b); sra_append(sra, vol);
     }
-    for (i = 1; i < 8; i++) {
+    for (i = 1; i < 10; i++) {
         sra_append(sra, 0xb0 | CH[i]);
         sra_append(sra, 0x0b);
         sra_append(sra, vol);

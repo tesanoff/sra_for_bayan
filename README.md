@@ -405,6 +405,7 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 
 | Channel | Name | Role |
 |---------|------|------|
+| Ch7  | Acc5     | Accompaniment part 5 (same logic as Acc1–4) |
 | Ch8  | Acc.Bass | Auto bass |
 | Ch9  | Acc1     | Accompaniment part 1 |
 | Ch10 | Drum     | Drum kit (GM standard drum channel) |
@@ -413,10 +414,11 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 | Ch13 | Acc4     | Accompaniment part 4 (sustained tones, e.g. Strings) |
 | Ch14 | M.Bass   | Melodic bass |
 | Ch15 | Lower    | Lower voice (sustained tones) |
+| Ch16 | Phrase   | Melodic / phrase lines (same logic as Acc1–4) |
 
-> Channels **1–7** and **16** are reserved for live playing. SRA does not
+> Channels **1–6** are reserved for live playing. SRA does not
 > send accompaniment data to them, and ignores any incoming MIDI
-> messages on the arranger-owned channels Ch8–Ch15.
+> messages on the arranger-owned channels Ch7–Ch16.
 
 > **Note on this fork.** The channel layout above matches the current
 > version of this fork.  Style files created for the original project

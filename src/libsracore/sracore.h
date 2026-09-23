@@ -57,6 +57,15 @@ void     sracore_destroy(SraCore *sra);
    Must be called before sracore_init(). */
 void     sracore_set_offset(SraCore *sra, int offset);
 
+/* Set the directory containing style files (style0.mid ...).
+   Default: "." (current working directory).
+   A trailing '/' is optional and handled transparently.
+   Must be called before sracore_init(); a call after init is
+   silently ignored.  Passing an empty string is undefined here —
+   the config / command-line layer rejects empty values before
+   reaching this function. */
+void     sracore_set_styles_dir(SraCore *sra, const char *dir);
+
 /* Set the MIDI channel (0-15) reserved for chord input.
    Notes arriving on this channel are analysed as chords (when the
    arranger is active) and otherwise forwarded on the same channel.

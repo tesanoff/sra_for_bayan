@@ -29,6 +29,7 @@
 #define SX_TOGGLE_DRUM      0x0C
 #define SX_FADE_OUT         0x0D
 #define SX_CHANGE_MODE      0x0E
+#define SX_TOGGLE_LOWER     0x53
 #define SX_LOAD_STYLE       0x20
 #define SX_NOTE_CMD_ENABLE  0x50
 #define SX_SET_CHORD_CH     0x51
@@ -131,6 +132,16 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
         sra->msg = (SRABYTE)(CMD_CHMODE + sra->offset);
         sra->shift_f = 0;
         sra_check_com(sra);
+        break;
+
+    /* ---- Lower toggle -------------------------------------------- */
+    case SX_TOGGLE_LOWER:
+        if (datalen != 0) { sx_error("CMD 0x53 takes no data", cmd, datalen); return; }
+        sra->lower_vf = 1 - sra->lower_vf;
+        /* Refresh the sounding chord so LOWER notes are cleanly
+           replaced (same approach as CMD_CHMODE). */
+        sra_chord_off(sra);
+        sra_chord_on(sra);
         break;
 
     /* ---- Style loading ------------------------------------------- */

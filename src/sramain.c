@@ -93,6 +93,9 @@ static int run_daemon(SraConfig *cfg) {
 
     engine_init(&g_engine, &g_midi, NULL);
 
+    if (cfg->has_styles_dir)
+        sracore_set_styles_dir(g_engine.sra, cfg->styles_dir);
+
     err = midi_device_open(&g_midi, NULL);
     if (err) {
         syslog(LOG_ERR, "MIDI open error %d", err);
@@ -150,6 +153,11 @@ int main(int argc, char **argv) {
     midi_device_probe(&g_midi);
     ui_init(&g_ui);
     engine_init(&g_engine, &g_midi, NULL);
+
+    /* styles_dir: cfg > cwd (default "." already set by
+       sracore_create()).  Empty cfg.styles_dir means "not set". */
+    if (cfg.has_styles_dir)
+        sracore_set_styles_dir(g_engine.sra, cfg.styles_dir);
 
     /* Apply values from config / command line.  Remaining defaults
        (chord_channel = 2, ctrl_offset = 0) are set by

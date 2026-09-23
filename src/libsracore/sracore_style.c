@@ -238,7 +238,30 @@ int sra_load_style(SraCore *sra, int style_num) {
     int     session = 0, session_time = 0;
     FILE   *f;
 
-    sprintf(sra->style_name, "style%d.mid", style_num);
+    /* Build "<styles_dir>/style<NN>.mid", avoiding a double
+       slash when styles_dir already ends with '/'.
+       Guard against truncation: if the resulting path would not
+       fit in style_name[], refuse to load (caller reports
+       Error(1) "Style file not found").  In practice styles_dir
+       is short; the check just keeps -Wformat-truncation quiet
+       and makes the failure mode explicit. */
+    {
+        size_t dlen = strlen(sra->styles_dir);
+        int    sep  = (dlen > 0 && sra->styles_dir[dlen - 1] == '/') ? 0 : 1;
+        size_t need = dlen + (size_t)sep + sizeof("/style127.mid");
+        if (need > sizeof(sra->style_name)) {
+            /* styles_dir too long to fit in style_name */
+            sra->style_name[0] = '\0';
+            return 0;
+        }
+        if (sep) {
+            snprintf(sra->style_name, sizeof(sra->style_name),
+                     "%s/style%d.mid", sra->styles_dir, style_num);
+        } else {
+            snprintf(sra->style_name, sizeof(sra->style_name),
+                     "%sstyle%d.mid", sra->styles_dir, style_num);
+        }
+    }
 
     if (!(f = fopen(sra->style_name, "rb"))) return 0;
 

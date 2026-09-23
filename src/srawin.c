@@ -89,6 +89,9 @@ static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
         engine_init(&g_engine, &g_midi, (void *)hwnd);
         ui_init(&g_ui, hwnd);
 
+        if (cfg && cfg->has_styles_dir)
+            sracore_set_styles_dir(g_engine.sra, cfg->styles_dir);
+
         if (cfg) {
             g_app.chord_channel = cfg->chord_ch - 1;   /* config is 1-based */
             g_app.ctrl_offset   = cfg->ctrl_offset;

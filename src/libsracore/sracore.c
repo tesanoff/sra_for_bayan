@@ -17,10 +17,12 @@ SraCore *sracore_create(void) {
     sra->acc_vf        = 1;
     sra->acc_bass_vf   = 1;
     sra->drum_vf       = 1;
+    sra->lower_vf      = 1;
     sra->note_cmd_enabled = 1;   /* Note-On commands active by default */
     sra->master_vol       = 100; /* CC7 default, matches sra_reset() */
     sra->chord_ch         = 2;   /* default: channel 3 (0-based) */
     sra->chord_debounce   = 0;
+    strcpy(sra->styles_dir, ".");
     strcpy(sra->style_name, "style");
     return sra;
 }
@@ -33,6 +35,11 @@ void sracore_destroy(SraCore *sra) {
 
 void sracore_set_offset(SraCore *sra, int offset) {
     sra->offset = offset;
+}
+
+void sracore_set_styles_dir(SraCore *sra, const char *dir) {
+    if (!sra || !dir || !*dir) return;
+    snprintf(sra->styles_dir, sizeof(sra->styles_dir), "%s", dir);
 }
 
 void sracore_set_chord_channel(SraCore *sra, int chord_ch) {

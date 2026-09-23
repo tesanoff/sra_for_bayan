@@ -80,6 +80,7 @@ sra --daemon [options]               daemon mode (Linux only)
 | `--out ADDR` | MIDI OUT rawmidi address, e.g. `hw:5,1` (Linux). On Windows, use the device name. |
 | `--chord-ch N` | Chord channel, **1-based** (1–16). |
 | `--ctrl-offset N` | Command key zone shift: `-1`, `0`, or `+1`. |
+| `--styles-dir PATH` | Directory containing style files (`style0.mid` …). Default: current working directory. Must not be empty if given. |
 | `--help` | Show help and exit. |
 | `--version` | Show version and exit. |
 
@@ -146,10 +147,11 @@ in  = hw:5,0
 out = hw:5,1
 chord_ch = 3
 ctrl_offset = 0
+# styles_dir = /var/opt/sf2/styles
 ```
 
 Format: `key = value`, one per line. `#` starts a comment.
-Recognised keys: `in`, `out`, `chord_ch`, `ctrl_offset`.
+Recognised keys: `in`, `out`, `chord_ch`, `ctrl_offset`, `styles_dir`.
 Unknown keys and malformed lines abort startup with an error.
 
 `chord_ch` is **1-based** (1–16), matching the value shown in the UI.
@@ -297,6 +299,7 @@ F0 7D <CMD> [<DATA...>] F7
 | `50` | Enable / disable Note-On commands | `00` = off, `01` = on |
 | `51` | Set chord channel | channel, **0-based** (0–15) |
 | `52` | Master Volume | volume (0–127) |
+| `53` | Toggle Lower | — |
 
 > **Channel numbering.** The SysEx command `0x51` uses **0-based**
 > channel numbers (0–15), i.e. `00` = MIDI channel 1, `02` = MIDI
@@ -327,6 +330,26 @@ Example — set master volume to 80:
 F0 7D 52 50 F7
 ```
 
+### Lower Toggle (CMD `0x53`)
+
+Enables or disables the **Lower** voice (the chord notes echoed on
+channel 15 / UI 16, one octave above the chord root).
+
+```
+F0 7D 53 F7
+```
+
+The command has no data bytes; each message flips the current state.
+The default is **enabled** (`1`).
+
+When the state changes, any currently sounding Lower notes are
+cleanly replaced: the arranger re-triggers the active chord, so
+no notes hang.  M.Bass and the accompaniment parts are unaffected.
+
+The Lower voice is independent of the `Change Mode` command
+(`0x0E`): toggling `0x0E` does not change the Lower state, and
+vice versa.  When `Change Mode` is off (`mode = 0`), Lower is
+silent regardless of its own toggle.
 ### Examples
 
 Start the arranger:
@@ -370,7 +393,10 @@ On Windows, use `sendmidi` or a similar MIDI utility.
 ### File Format
 
 - Save as **SMF Format 0**. Name files `style0.mid` through `style127.mid`.
-- Place style files in the **same directory** as the SRA executable (e.g. `C:\NazoMusic-SRA\`).
+- Place style files in the **same directory** as the SRA executable,
+  or point SRA at a dedicated directory with `--styles-dir PATH`
+  (Linux daemon mode) / `styles_dir = PATH` (config file).
+  If neither is given, SRA looks in the current working directory.
 - Each file is mapped to a key and loaded via the SysEx `Load Style`
   command (`F0 7D 20 <NN> F7`).
 
@@ -530,6 +556,7 @@ Typical messages:
 | `CMD 0x51 data out of range (0..15)` | Channel > 15 |
 | `CMD 0x52 requires 1 data byte` | Master Volume without a value |
 | `CMD 0x52 data out of range (0..127)` | Volume > 127 |
+| `CMD 0x53 takes no data` | Toggle Lower with unexpected data |
 
 ---
 

@@ -108,7 +108,7 @@ void sra_chord_on(SraCore *sra) {
             sra->key_on[i][0] + 12 + sra->offset2 - sra->offset3;
         sra_append(sra, 0x90 | LOWER);
         sra_append(sra, sra->key_off[sra->key_off_count]);
-        sra_append(sra, sra->key_on[i][1] * sra->mode);
+        sra_append(sra, sra->key_on[i][1] * sra->mode * sra->lower_vf);
     }
     sra->chord_c = 1;
 }

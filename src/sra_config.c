@@ -53,12 +53,14 @@ void sra_config_print_help(void) {
 "  --out ADDR          MIDI OUT rawmidi address, e.g. hw:5,1\n"
 "  --chord-ch N        chord channel (1-16)\n"
 "  --ctrl-offset N     shift command key zone: -1, 0, or +1\n"
+"  --styles-dir PATH   directory with style*.mid files\n"
+"                      (default: current working directory)\n"
 "  --help              show this help and exit\n"
 "  --version           show version and exit\n"
 "\n"
 "Config file format:\n"
 "  key = value      one per line; '#' starts a comment\n"
-"  Recognised keys: in, out, chord_ch, ctrl_offset\n"
+"  Recognised keys: in, out, chord_ch, ctrl_offset, styles_dir\n"
 );
 }
 
@@ -150,6 +152,19 @@ int sra_config_parse_args(SraConfig *cfg, int argc, char **argv) {
                 return 1;
             }
             cfg->has_ctrl_offset = 1;
+        }
+        else if (strcmp(a, "--styles-dir") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "sra: --styles-dir requires an argument\n");
+                return 1;
+            }
+            if (argv[i][0] == '\0') {
+                fprintf(stderr, "sra: --styles-dir requires a non-empty argument\n");
+                return 1;
+            }
+            strncpy(cfg->styles_dir, argv[i], sizeof(cfg->styles_dir) - 1);
+            cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
+            cfg->has_styles_dir = 1;
         }
         else {
             fprintf(stderr, "sra: unknown option '%s'\n", a);
@@ -243,6 +258,18 @@ int sra_config_load(SraConfig *cfg) {
                 return 1;
             }
             if (!cfg->has_ctrl_offset) cfg->ctrl_offset = v;
+        }
+        else if (strcmp(key, "styles_dir") == 0) {
+            if (val[0] == '\0') {
+                fprintf(stderr, "sra: %s:%d: styles_dir must not be empty\n",
+                        cfg->config_path, lineno);
+                fclose(f);
+                return 1;
+            }
+            if (!cfg->has_styles_dir) {
+                strncpy(cfg->styles_dir, val, sizeof(cfg->styles_dir) - 1);
+                cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
+            }
         }
         else {
             fprintf(stderr, "sra: %s:%d: unknown key '%s'\n",

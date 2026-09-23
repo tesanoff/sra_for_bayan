@@ -18,6 +18,7 @@ typedef struct {
     char out_addr[64];          /* MIDI OUT rawmidi address, e.g. hw:5,1 */
     int  chord_ch;              /* chord channel, 1-based (1..16)       */
     int  ctrl_offset;           /* -1, 0, +1 (same as UI Ctrl Offset)   */
+    char styles_dir[512];       /* directory with style*.mid files      */
     char config_path[256];      /* path to config file                   */
 
     /* "set by argv" flags — used so the config file does not
@@ -26,6 +27,7 @@ typedef struct {
     int  has_out;
     int  has_chord_ch;
     int  has_ctrl_offset;
+    int  has_styles_dir;
 } SraConfig;
 
 /* Initialise cfg with defaults. */

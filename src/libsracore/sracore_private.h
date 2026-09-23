@@ -129,7 +129,7 @@ struct SraCore {
     int              bass_lock;
 
     /* Part on/off flags */
-    SRABYTE mbass_vf, acc_vf, acc_bass_vf, drum_vf;
+    SRABYTE mbass_vf, acc_vf, acc_bass_vf, drum_vf, lower_vf;
 
     /* Master volume for arranger-owned channels (CC7), 0..127.
        Set via SysEx CMD 0x52; used by sra_reset() and applied
@@ -155,7 +155,8 @@ struct SraCore {
     SRABYTE prog_t[16][3];
 
     /* Style file data */
-    char    style_name[16];
+    char    styles_dir[512];   /* directory with style*.mid files */
+    char    style_name[512];   /* full path of the loaded style   */
     SRABYTE sty_session_init[3][6][8][16][3];
     SRABYTE sty_session_note[3][6][8][MAXVOICE / 2][3];
     char    chord_name[12];

@@ -29,6 +29,8 @@
 #define SX_TOGGLE_DRUM      0x0C
 #define SX_FADE_OUT         0x0D
 #define SX_CHANGE_MODE      0x0E
+#define SX_TO_ORIGINAL      0x0F
+#define SX_TO_VARIATION     0x10
 #define SX_TOGGLE_LOWER     0x53
 #define SX_LOAD_STYLE       0x20
 #define SX_NOTE_CMD_ENABLE  0x50
@@ -100,6 +102,16 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
         sra->msg = (SRABYTE)(CMD_IE + sra->offset);
         sra->shift_f = 0;
         sra_check_com(sra);
+        break;
+
+    case SX_TO_ORIGINAL:
+        if (datalen != 0) { sx_error("CMD 0x0F takes no data", cmd, datalen); return; }
+        sra->var_f = 0;
+        break;
+
+    case SX_TO_VARIATION:
+        if (datalen != 0) { sx_error("CMD 0x10 takes no data", cmd, datalen); return; }
+        sra->var_f = 1;
         break;
 
     /* ---- Tempo ---------------------------------------------------- */

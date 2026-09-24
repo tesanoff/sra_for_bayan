@@ -54,7 +54,8 @@ convention the MIDI note numbers map to note names as follows:
 ## Overview
 
 1. Provides real-time intelligent auto-accompaniment (simulates a live arranger keyboard).
-2. Splits the keyboard into two zones: **Lower Channel** and **Upper Channel**.
+2. Chords are detected on a configurable MIDI channel (see *Chord Ch*);
+   notes on all other channels are forwarded as live playing.
 3. Style files use **SMF format (MIDI Format 0)** and can be user-created.
    *(SMF Format 1 is not supported.)*
 4. Fully controlled via the MIDI keyboard and/or **SysEx** messages;
@@ -243,8 +244,8 @@ threads, releases the MIDI ports, and exits.
 | `Bb7` | 94 | Start |
 | `Ab7` | 92 | Intro / Ending |
 | `Shift + F#7` | 90 | Fade Out |
-| `Shift + C#7` | 85 | Tempo + |
-| `Shift + Eb7` | 87 | Tempo − |
+| `Shift + C#7` | 85 | Tempo − |
+| `Shift + Eb7` | 87 | Tempo + |
 | `Shift + G7` | 91 | Change Mode |
 | `Shift + F7` | 89 | Toggle M.Bass |
 | `Shift + E7` | 88 | Toggle Acc. |
@@ -341,7 +342,7 @@ F0 7D 52 50 F7
 ### Lower Toggle (CMD `0x53`)
 
 Enables or disables the **Lower** voice (the chord notes echoed on
-channel 15 / UI 16, one octave above the chord root).
+channel 14 / UI 15, one octave above the chord root).
 
 ```
 F0 7D 53 F7
@@ -525,7 +526,7 @@ file (command line wins).
 **2. After selecting a style, how do I adjust the tempo?**
 
 Hold Shift (`C8`, MIDI note 96) and press `C#7` (MIDI note 85) to
-increase tempo, or `Eb7` (MIDI note 87) to decrease it. Each press
+decrease tempo, or `Eb7` (MIDI note 87) to increase it. Each press
 changes the tempo by 1. Alternatively, send `F0 7D 07 F7` (Tempo +)
 or `F0 7D 08 F7` (Tempo −) via SysEx.
 

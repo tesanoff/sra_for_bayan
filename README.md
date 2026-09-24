@@ -120,7 +120,7 @@ Software-based Real-time Arranger v4.06 by ZZ-Denis @ NazoMusic
 |-----|-----------|-------------|
 | `[Q][Z]` | MIDI IN | Select the MIDI input port. `Q` — next port, `Z` — previous port. |
 | `[E][C]` | MIDI OUT | Select the MIDI output port. `E` — next port, `C` — previous port. |
-| `[A][D]` | Chord Ch | MIDI channel reserved for chord input (1–16). Must match the channel your keyboard uses for the left-hand chord zone. `A` decreases, `D` increases. |
+| `[A][D]` | Chord Ch | MIDI channel reserved for chord input (1–16). Must match the channel on which your keyboard sends chords. `A` decreases, `D` increases. |
 | `[O]` | CTRL Offset | Shifts the command key zone. Values: `{-1, 0, +1}` — use `+1` for 76-key, `-1` for 49-key. |
 | `[S]` | START | Open the selected MIDI ports and start the arranger. |
 
@@ -255,6 +255,12 @@ threads, releases the MIDI ports, and exits.
 | `Shift + A7` | 93 | To Variation |
 | `Shift + Bb7` | 94 | Sync Start |
 | `Shift + Ab7` | 92 | *(obsolete — Function mode has been removed)* |
+
+> **Note.** `B7` (95) and `Shift + B7` (96 + 95) are the **same
+> MIDI note** — the Shift key (`C8`, note 96) is held down while
+> `B7` is pressed.  The table lists them separately because the
+> resulting function differs (Fill to Original vs. To Original),
+> but the note number is identical.
 
 ---
 
@@ -471,9 +477,12 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 > while SRA is playing.
 
 > **Note on this fork.** The channel layout above matches the current
-> version of this fork.  Style files created for the original project
-> by ZZ-Denis used different channels (1, 4, 5, 6, 7) and must be
-> migrated — see "Migrating Old Style Files" below.
+> version of this fork.  Compared to the original project by
+> ZZ-Denis, **ACC5 (Ch7) and PHRASE (Ch16)** were added, and the
+> existing parts were moved to new channel numbers.  Style files
+> created for the original project used different channels
+> (1, 4, 5, 6, 7) and must be migrated — see "Migrating Old Style
+> Files" below.
 
 ---
 

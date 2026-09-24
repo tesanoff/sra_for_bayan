@@ -111,9 +111,11 @@ interpreted on arranger-owned channels, in either state.
 
 ### Arranger-owned output channels
 
-SRA generates accompaniment on a fixed set of MIDI channels.  All
-input on these channels is ignored, to avoid feedback when MIDI OUT
-is looped back to MIDI IN.
+SRA generates accompaniment on a fixed set of MIDI channels.
+Input on these channels is filtered **only while the arranger is
+running** (`start_f == 1`), to avoid feedback when MIDI OUT is
+looped back to MIDI IN.  In Stop, all channels pass through
+unchanged.  See "Chord detection" above.
 
 | Role | 0-based | UI |
 |------|:---:|:---:|
@@ -169,8 +171,10 @@ Commands are described in detail below, grouped by function.
 Starts playback.
 
 - **If stopped:** initialises the engine, resets all voices, and
-  begins playback from the current section (Intro if `Intro/Ending`
-  was armed, otherwise Original or Variation according to `var_f`).
+  begins playback.  The starting section is set **explicitly**
+  from the internal flags `ief` (Intro/Ending armed) and `var_f`
+  (Original / Variation): Intro if `ief` is set, otherwise
+  Original or Variation according to `var_f`.
 - **If running:** **toggles to stopped** — this is the same code path
   as the Stop command (see below).  Calling `01` twice starts, then
   stops.
@@ -253,8 +257,8 @@ Arms the Intro or Ending section.
   section finishes its current bar, then transitions to the Ending
   at the next bar boundary.
 - **If a fill is currently playing:** the command is deferred —
-  `ief` is set, but the switch to Ending happens only after the fill
-  completes.
+  `ief` is set, but the switch to Ending happens only at the next
+  bar boundary **after** the fill completes.
 
 The command is a **toggle at the semantic level**: the same command
 selects Intro (when stopped) or Ending (when running).  There is no
@@ -323,7 +327,8 @@ Data: none.
 
 These commands enable or disable a generated accompaniment part.
 Each is a **toggle** — calling it twice returns to the original state.
-The default for all parts is **enabled**.
+The default for all parts is **enabled** (`1`): M.Bass, Acc.,
+Acc.Bass, Drum, and Lower all start enabled.
 
 When a part is disabled, its velocity multiplier becomes 0, so the
 notes are generated as Note-On with velocity 0 (equivalent to
@@ -394,8 +399,12 @@ The engine keeps a three-state flag `fadeout_f`:
 | State | Meaning |
 |-------|---------|
 | `-1` | Idle (no fade in progress) |
-| `127 … 0` | Fade-out in progress; value is the current volume |
+| `126 … 1` | Fade-out in progress; value is the current volume |
 | `-2` | Fade-out cancelled; volume restores to 127 |
+
+> **Note.** `127` is only the *starting* moment: the first fade
+> step moves the value to `126`.  The final value is `1`, not `0`
+> — the fade stops one step short of silence.
 
 Behaviour of the command:
 
@@ -460,9 +469,12 @@ The `mode` flag affects two things:
    `mode = 1`, they play according to their respective toggles
    (`53` for Lower, `09` for M.Bass).
 
+The default is `mode = 0` (chord detection before Start is off;
+Lower and M.Bass are silent until the mode is enabled).
+
 On toggle **from 1 to 0**, any sounding chord is released
-(`sra_chord_off`) and the chord key tracking is cleared — so no
-notes are left hanging.
+(`sra_chord_off`) and the chord key tracking is cleared
+(`key_on_count = 0`) — so no notes are left hanging.
 
 Data: none.
 
@@ -573,6 +585,7 @@ Possible error messages:
 | Message | Cause |
 |---------|-------|
 | `missing CMD byte` | `F0 7D F7` — Manufacturer ID present, no command byte |
+| `message too long` | SysEx payload exceeds 256 bytes total (see §1) |
 | `CMD 0x01 takes no data` | Start with unexpected data |
 | `CMD 0x02 takes no data` | Stop with unexpected data |
 | `CMD 0x03 takes no data` | Sync Start with unexpected data |
@@ -606,9 +619,10 @@ silently, without any check on their content.
 
 ### Oversized messages
 
-Messages longer than 256 data bytes (after the Manufacturer ID) are
-reported as `message too long` and dropped.  This limit is enforced
-by the platform layer, not by the dispatcher.
+Messages longer than **256 bytes total** (including the `7D`
+Manufacturer ID and the `CMD` byte, but excluding the `F0` / `F7`
+framing) are reported as `message too long` and dropped.  This
+limit is enforced by the platform layer, not by the dispatcher.
 
 ---
 
@@ -668,7 +682,7 @@ Set master volume to 64 (half):
 F0 7D 52 40 F7
 ```
 
-Fade out:
+Fade out / cancel fade:
 
 ```
 F0 7D 0D F7
@@ -679,6 +693,11 @@ Cancel the fade (restore volume immediately):
 ```
 F0 7D 0D F7
 ```
+
+> **Note.** Both actions use the **same command** `F0 7D 0D F7`.
+> The first call starts the fade; a second call while the fade is
+> in progress cancels it and restores the volume to 127
+> immediately.  There is no separate "cancel fade" command.
 
 ### Loading a style
 
@@ -727,7 +746,9 @@ deprecated Note-On control.
 | SysEx | Note-On | Notes |
 |-------|---------|-------|
 | `01` Start | `Bb7` (94) | Same effect. |
-| `02` Stop | `Bb7` (94) | Same code path as Start (toggle). |
+| `02` Stop | `Bb7` (94) | There is no separate Note-On Stop
+  command: Stop is the **same code path** as Start (toggle).
+  Pressing `Bb7` again stops the arranger. |
 | `03` Sync Start | `Shift + Bb7` (96+94) | Same effect. |
 | `04` Fill to Original | `B7` (95) | Same effect. |
 | `05` Fill to Variation | `A7` (93) | Same effect. |

@@ -160,8 +160,7 @@ int main(int argc, char **argv) {
         sracore_set_styles_dir(g_engine.sra, cfg.styles_dir);
 
     /* Apply values from config / command line.  Remaining defaults
-       (chord_channel = 2, ctrl_offset = 0) are set by
-       sra_config_defaults(). */
+       (defaults are set by sra_config_defaults()). */
     g_app.chord_channel = cfg.chord_ch - 1;   /* config is 1-based */
     g_app.ctrl_offset   = cfg.ctrl_offset;
 

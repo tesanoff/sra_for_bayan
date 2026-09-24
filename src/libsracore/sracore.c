@@ -91,6 +91,18 @@ void sra_append(SraCore *sra, SRABYTE b) {
     sra->que_t = (sra->que_t + 1) % MAXQUEUE;
 }
 
+/* True if `ch` (0-based) is one of the arranger-owned output
+   channels: ACCBASS, ACC1..ACC5, DRUM, MBASS, LOWER, PHRASE. */
+int sra_is_arranger_channel(SRABYTE ch) {
+    switch (ch) {
+    case ACCBASS: case ACC1: case ACC2: case ACC3: case ACC4:
+    case ACC5:    case MBASS: case DRUM: case LOWER: case PHRASE:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /* MIDI input                                                           */
 /* ------------------------------------------------------------------ */
@@ -107,23 +119,12 @@ void sracore_midi_in(SraCore *sra,
     SRABYTE msg   = msg2 | in_ch;
     SRABYTE msg3  = 0xFF; /* 0xFF = "no key event this message" */
 
-    /* Channels reserved for arranger accompaniment: ignore all input
-       messages on them, to avoid clashes with the generated parts. */
-    switch (in_ch) {
-    case ACCBASS:
-    case ACC1:
-    case ACC2:
-    case ACC3:
-    case ACC4:
-    case ACC5:
-    case MBASS:
-    case DRUM:
-    case LOWER:
-    case PHRASE:
+    /* Channels reserved for arranger accompaniment: ignore input
+       only while the arranger is running, to avoid mixing the
+       user's live playing with the generated parts on the same
+       channels.  In Stop, all channels pass through. */
+    if (sra->start_f && sra_is_arranger_channel(in_ch))
         return;
-    default:
-        break;
-    }
 
     switch (msg2) {
     case 0x80:
@@ -167,10 +168,12 @@ void sracore_midi_in(SraCore *sra,
                 sra_check_chord(sra, vel);
             }
             /* else: forwarded as melody/chord echo. */
-        } else {
+        } else if (!sra_is_arranger_channel(in_ch)) {
             /* Any other channel: restore Note-On commands.
                sra_check_key_on/_off will handle command notes
-               (Start, Fill, Tempo, ...) and leave the rest alone. */
+               (Start, Fill, Tempo, ...) and leave the rest alone.
+               On arranger-owned channels the note is forwarded
+               but never interpreted as a command. */
             sra->key_v = vel;
             if (msg2 == 0x90 && vel > 0)
                 sra_check_key_on(sra);

@@ -176,6 +176,9 @@ struct SraCore {
 void sra_append(SraCore *sra, SRABYTE b);
 void sra_do_error(SraCore *sra, int code);
 
+/* True if `ch` (0-based) is an arranger-owned output channel. */
+int  sra_is_arranger_channel(SRABYTE ch);
+
 /* sracore_chord.c */
 void sra_chord_off(SraCore *sra);
 void sra_chord_on(SraCore *sra);

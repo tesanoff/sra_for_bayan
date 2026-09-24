@@ -91,9 +91,9 @@ void sra_prog_change(SraCore *sra, SRABYTE ch) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Reset: send initialisation messages to arranger-owned channels only  */
-/* (ACCBASS, ACC1..ACC4, MBASS, DRUM, LOWER).  Channels used for live    */
-/* playing are left untouched.                                          */
+/* Reset: send initialisation messages to arranger-owned channels only. */
+/* (ACCBASS, ACC1..ACC5, PHRASE, MBASS, DRUM, LOWER).  Channels used    */
+/* for live playing are left untouched.                                 */
 /* ------------------------------------------------------------------ */
 
 void sra_reset(SraCore *sra, int full) {
@@ -105,6 +105,22 @@ void sra_reset(SraCore *sra, int full) {
     };
 
     for (i = 0; i < 16; i++) sra->prog[i][0] = 0xff;
+
+    /* All Sound Off on every arranger-owned channel: release any
+       notes the user might have been playing on them while the
+       arranger was stopped. */
+    {
+        static const SRABYTE ALL_CH[] = {
+            LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACC5, PHRASE,
+            ACCBASS, DRUM
+        };
+        int k;
+        for (k = 0; k < 10; k++) {
+            sra_append(sra, (SRABYTE)(0xb0 | ALL_CH[k]));
+            sra_append(sra, 0x78);   /* All Sound Off */
+            sra_append(sra, 0x00);
+        }
+    }
 
     /* Pitch-wheel centre on accent channels */
     for (i = 0; i < 7; i++) {

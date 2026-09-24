@@ -102,6 +102,13 @@ to the output as live playing, on their original channel.
 The chord channel is configurable via `--chord-ch` (1-based) or SysEx
 `0x51` (0-based).
 
+Notes on the arranger-owned output channels (see the table below)
+are filtered only while the arranger is running: during playback
+they are ignored on input, to avoid mixing with the generated
+parts; in Stop they pass through unchanged.  Note-On control
+commands (`Start`, `Fill`, `Tempo`, part toggles) are never
+interpreted on arranger-owned channels, in either state.
+
 ### Arranger-owned output channels
 
 SRA generates accompaniment on a fixed set of MIDI channels.  All

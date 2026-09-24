@@ -461,8 +461,14 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 | Ch16 | Phrase   | Melodic / phrase lines (same logic as Acc1–4) |
 
 > Channels **1–6** are reserved for live playing. SRA does not
-> send accompaniment data to them, and ignores any incoming MIDI
-> messages on the arranger-owned channels Ch7–Ch16.
+> send accompaniment data to them.
+>
+> SRA filters its own channels only while the arranger is running:
+> during playback, incoming MIDI on Ch7–Ch16 is ignored, to avoid
+> mixing with the generated parts.  In Stop, all channels pass
+> through unchanged.  It is the user's (keyboard's) responsibility
+> not to use the same channels for a second auto-accompaniment
+> while SRA is playing.
 
 > **Note on this fork.** The channel layout above matches the current
 > version of this fork.  Style files created for the original project

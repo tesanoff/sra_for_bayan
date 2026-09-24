@@ -331,7 +331,17 @@ Note-Off).  The notes are still sent, but they are silent.
 
 ### `09` — Toggle M.Bass
 
-Toggles the melodic bass part (channel 13 / UI 14).
+Toggles the **manual bass** voice (channel 13 / UI 14).
+
+While the arranger is **stopped** (`start_f == 0`) and chord
+mode is on (`mode == 1`), M.Bass plays the **lowest note of
+the currently held chord**.  Velocity is that of the lowest
+note, multiplied by this toggle (`0` or `1`).
+
+M.Bass **never sounds during playback** — the accompaniment
+bass comes from the style, on the Acc.Bass channel instead.
+
+The default patch is 35 (fretless bass), set by `sra_reset`.
 
 ### `0A` — Toggle Acc.
 
@@ -347,8 +357,18 @@ Toggles the drum part (channel 9 / UI 10).
 
 ### `53` — Toggle Lower
 
-Toggles the Lower voice (channel 14 / UI 15) — the chord notes
-echoed in the lower register.
+Toggles the **Lower** voice (channel 14 / UI 15) — all notes of
+the held chord, transposed up by +12 semitones (plus internal
+offsets).
+
+Unlike M.Bass, Lower **sounds both while stopped and during
+playback** — it echoes the chord you play, on top of the style
+accompaniment.  It is silenced only when:
+
+- `Change Mode` is off (`mode == 0`), or
+- this toggle is off (`lower_vf == 0`), or
+- the engine is in an Intro or Ending section (internal
+  `voice_lock`).
 
 Unlike the other toggles, `53` **immediately re-triggers** the
 current chord (`sra_chord_off` + `sra_chord_on`), so currently
@@ -356,8 +376,6 @@ sounding Lower notes are cleanly replaced.  This avoids stuck notes.
 
 The Lower voice is **independent of `Change Mode`** (`0E`):
 toggling `0E` does not change the Lower state, and vice versa.
-However, when `Change Mode` is off (`mode = 0`), Lower is silent
-regardless of its own toggle.
 
 Data: none for all five toggles.
 

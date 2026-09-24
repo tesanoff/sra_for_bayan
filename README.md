@@ -445,7 +445,7 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 
 - Each style bar must begin with initialization commands (e.g. MIDI PATCH / BANK settings).
 
-### MIDI Channel Assignments
+### MIDI Channel Assignments in SRA
 
 | Channel | Name | Role |
 |---------|------|------|
@@ -456,8 +456,8 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 | Ch11 | Acc2     | Accompaniment part 2 |
 | Ch12 | Acc3     | Accompaniment part 3 (sustained tones, e.g. Strings) |
 | Ch13 | Acc4     | Accompaniment part 4 (sustained tones, e.g. Strings) |
-| Ch14 | M.Bass   | Melodic bass |
-| Ch15 | Lower    | Lower voice (sustained tones) |
+| Ch14 | M.Bass   | Manual bass — lowest note of the held chord; live play only, silent during playback **Note**: it must not be used in style files |
+| Ch15 | Lower    | Chord echo in the lower register — all notes of the held chord, +12 semitones; live play, also during playback **Note**: it must not be used in style files |
 | Ch16 | Phrase   | Melodic / phrase lines (same logic as Acc1–4) |
 
 > Channels **1–6** are reserved for live playing. SRA does not

@@ -175,14 +175,14 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
         if (datalen != 1) { sx_error("CMD 0x52 requires 1 data byte", cmd, datalen); return; }
         if (d0 > 127)     { sx_error("CMD 0x52 data out of range (0..127)", cmd, datalen); return; }
         sra->master_vol = d0;
-        /* Apply immediately: CC7 = <VOL> on all arranger-owned channels.
-           Channels: LOWER, MBASS, ACC1..ACC4, ACCBASS, DRUM. */
+        /* Apply immediately: CC7 = <VOL> on all arranger-owned channels
+           (same list as emit_volume_all in sracore_engine.c). */
         {
             static const SRABYTE CH[] = {
-                LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACCBASS, DRUM
+                LOWER, MBASS, ACC1, ACC2, ACC3, ACC4, ACC5, PHRASE, ACCBASS, DRUM
             };
             int i;
-            for (i = 0; i < 8; i++) {
+            for (i = 0; i < 10; i++) {
                 sra_append(sra, (SRABYTE)(0xb0 | CH[i]));
                 sra_append(sra, 0x07);          /* CC7 = Channel Volume */
                 sra_append(sra, d0);

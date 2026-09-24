@@ -309,6 +309,10 @@ F0 7D <CMD> [<DATA...>] F7
 | `52` | Master Volume | volume (0–127) |
 | `53` | Toggle Lower | — |
 
+> **Full command reference:** see [SYSEX.md](SYSEX.md) for a
+> detailed description of every command — behaviour, timing, side
+> effects, and interaction with other commands.
+
 > **Channel numbering.** The SysEx command `0x51` uses **0-based**
 > channel numbers (0–15), i.e. `00` = MIDI channel 1, `02` = MIDI
 > channel 3.  This is different from the config file and `--chord-ch`,

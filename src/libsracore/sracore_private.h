@@ -29,7 +29,7 @@
    so SESSION_MAX must satisfy SESSION_MAX * 480 <= 16383, i.e.
    SESSION_MAX <= 34.  We use 32 — the largest power of two below
    that bound. */
-#define SESSION_MAX 8
+#define SESSION_MAX 32
 
 
 /* ------------------------------------------------------------------ */

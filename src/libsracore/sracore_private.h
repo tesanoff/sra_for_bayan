@@ -16,7 +16,7 @@
 /* ------------------------------------------------------------------ */
 #define MAXQUEUE   384
 #define MAXVOICE   64
-#define STYLESIZE  110000 // was 44000
+#define STYLESIZE  220000 // was 44000
 
 /* Maximum number of bars per section (Intro / Main / Ending).
    Hard limit of the style format: IL, ML, EL are stored in the

@@ -445,8 +445,8 @@ continues to work on top of the current Master Volume.
 Data: 1 byte, 0–127.
 
 **Errors:**
-- `CMD 0x52 requires 1 data byte` — wrong length.
-- `CMD 0x52 data out of range (0..127)` — value > 127.
+- `CMD 0x52 Master Volume: missing data byte (expected 1, got 0)` — wrong length.
+- `CMD 0x52 Master Volume: data 0xFF out of range (0x00..0x7F)` — value > 127.
 
 **Example (volume 80):** `F0 7D 52 50 F7`
 
@@ -507,8 +507,8 @@ musical notes (e.g. on a 49-key keyboard with `--ctrl-offset -1`).
 Data: 1 byte, 0 or 1.
 
 **Errors:**
-- `CMD 0x50 requires 1 data byte` — wrong length.
-- `CMD 0x50 data must be 0 or 1` — value not 0 or 1.
+- `CMD 0x50 Enable/disable Note-On: missing data byte (expected 1, got 0)` — wrong length.
+- `CMD 0x50 Enable/disable Note-On: data 0x02 invalid (expected 0x00 or 0x01)` — value not 0 or 1.
 
 **Examples:** `F0 7D 50 00 F7` (disable), `F0 7D 50 01 F7` (enable).
 
@@ -531,8 +531,8 @@ F0 7D 51 <CH> F7
 Data: 1 byte, 0–15.
 
 **Errors:**
-- `CMD 0x51 requires 1 data byte` — wrong length.
-- `CMD 0x51 data out of range (0..15)` — value > 15.
+- `CMD 0x51 Set Chord Ch: missing data byte (expected 1, got 0)` — wrong length.
+- `CMD 0x51 Set Chord Ch: data 0x20 out of range (0x00..0x0F)` — value > 15.
 
 **Example (channel 4, 0-based 3):** `F0 7D 51 03 F7`
 
@@ -560,8 +560,8 @@ F0 7D 20 <NN> F7
 Data: 1 byte, 0–127.
 
 **Errors:**
-- `CMD 0x20 requires 1 data byte` — wrong length.
-- `CMD 0x20 data out of range` — value > 127.
+- `CMD 0x20 Load Style: missing data byte (expected 1, got 0)` — wrong length.
+- `CMD 0x20 Load Style: data 0x80 out of range (0x00..0x7F)` — value > 127.
 
 **Example (style 5):** `F0 7D 20 05 F7`
 
@@ -582,31 +582,68 @@ The message is then **dropped** — the engine continues running.
 
 Possible error messages:
 
+Each message has the form `SRA SysEx error: CMD 0xNN <Name>: <detail>`,
+where `<Name>` is the command name (from §3) and `<detail>` describes
+the exact problem — including the offending byte, if any.
+
 | Message | Cause |
 |---------|-------|
-| `missing CMD byte` | `F0 7D F7` — Manufacturer ID present, no command byte |
-| `message too long` | SysEx payload exceeds 256 bytes total (see §1) |
-| `CMD 0x01 takes no data` | Start with unexpected data |
-| `CMD 0x02 takes no data` | Stop with unexpected data |
-| `CMD 0x03 takes no data` | Sync Start with unexpected data |
-| `CMD 0x04 takes no data` | Fill to Original with unexpected data |
-| `CMD 0x05 takes no data` | Fill to Variation with unexpected data |
-| `CMD 0x06 takes no data` | Intro / Ending with unexpected data |
-| `CMD 0x07 takes no data` | Tempo + with unexpected data |
-| `CMD 0x08 takes no data` | Tempo − with unexpected data |
-| `CMD 0x0D takes no data` | Fade Out with unexpected data |
-| `CMD 0x0E takes no data` | Change Mode with unexpected data |
-| `CMD 0x0F takes no data` | To Original with unexpected data |
-| `CMD 0x10 takes no data` | To Variation with unexpected data |
-| `CMD 0x53 takes no data` | Toggle Lower with unexpected data |
-| `CMD 0x20 requires 1 data byte` | Load Style without a style number |
-| `CMD 0x20 data out of range` | Style number > 127 |
-| `CMD 0x50 requires 1 data byte` | Note-On enable without a value |
-| `CMD 0x50 data must be 0 or 1` | Value other than 0 or 1 |
-| `CMD 0x51 requires 1 data byte` | Set Chord Channel without a value |
-| `CMD 0x51 data out of range (0..15)` | Channel > 15 |
-| `CMD 0x52 requires 1 data byte` | Master Volume without a value |
-| `CMD 0x52 data out of range (0..127)` | Volume > 127 |
+| `missing CMD byte (message too short)` | `F0 7D F7` — Manufacturer ID present, no command byte |
+| `message too long (> 256 bytes)` | SysEx payload exceeds 256 bytes total (see §1) |
+| `CMD 0x01 Start: unexpected data byte 0xXX (expected none)` | Start with unexpected data |
+| `CMD 0x02 Stop: unexpected data byte 0xXX (expected none)` | Stop with unexpected data |
+| `CMD 0x03 Sync Start: unexpected data byte 0xXX (expected none)` | Sync Start with unexpected data |
+| `CMD 0x04 Fill to Original: unexpected data byte 0xXX (expected none)` | Fill to Original with unexpected data |
+| `CMD 0x05 Fill to Variation: unexpected data byte 0xXX (expected none)` | Fill to Variation with unexpected data |
+| `CMD 0x06 Intro / Ending: unexpected data byte 0xXX (expected none)` | Intro / Ending with unexpected data |
+| `CMD 0x07 Tempo +: unexpected data byte 0xXX (expected none)` | Tempo + with unexpected data |
+| `CMD 0x08 Tempo −: unexpected data byte 0xXX (expected none)` | Tempo − with unexpected data |
+| `CMD 0x0D Fade Out: unexpected data byte 0xXX (expected none)` | Fade Out with unexpected data |
+| `CMD 0x0E Change Mode: unexpected data byte 0xXX (expected none)` | Change Mode with unexpected data |
+| `CMD 0x0F To Original: unexpected data byte 0xXX (expected none)` | To Original with unexpected data |
+| `CMD 0x10 To Variation: unexpected data byte 0xXX (expected none)` | To Variation with unexpected data |
+| `CMD 0x53 Toggle Lower: unexpected data byte 0xXX (expected none)` | Toggle Lower with unexpected data |
+| `CMD 0x20 Load Style: missing data byte (expected 1, got 0)` | Load Style without a style number |
+| `CMD 0x20 Load Style: data 0xXX out of range (0x00..0x7F)` | Style number > 127 |
+| `CMD 0x50 Enable/disable Note-On: missing data byte (expected 1, got 0)` | Note-On enable without a value |
+| `CMD 0x50 Enable/disable Note-On: data 0xXX invalid (expected 0x00 or 0x01)` | Value other than 0 or 1 |
+| `CMD 0x51 Set Chord Ch: missing data byte (expected 1, got 0)` | Set Chord Channel without a value |
+| `CMD 0x51 Set Chord Ch: data 0xXX out of range (0x00..0x0F)` | Channel > 15 |
+| `CMD 0x52 Master Volume: missing data byte (expected 1, got 0)` | Master Volume without a value |
+| `CMD 0x52 Master Volume: data 0xXX out of range (0x00..0x7F)` | Volume > 127 |
+
+> **Note.**  The exact data byte is shown as `0xXX` in the table;
+> the engine prints the actual value (e.g. `0x01`, `0xFF`).
+
+### 11.1 Debug logging
+
+Pass `--debug` on the command line to log every SysEx message
+that SRA receives with its own Manufacturer ID (`0x7D`).  Each
+logged line contains the raw bytes, the command byte, and the
+interpreted command name:
+
+```
+[SRA] SysEx 7D 01 -> CMD 0x01 Start
+[SRA] SysEx 7D 20 05 -> CMD 0x20 Load Style
+[SRA] SysEx 7D 51 03 -> CMD 0x51 Set Chord Ch
+[SRA] SysEx 7D 22 22 -> CMD 0x22 Unknown
+```
+
+Unknown commands are logged **only** in debug mode; in normal
+mode they are silently ignored (the protocol is designed to be
+forward-compatible).
+
+If a message is malformed, the debug line is followed by a
+regular error line:
+
+```
+[SRA] SysEx 7D 01 01 -> CMD 0x01 Start
+SRA SysEx error: CMD 0x01 Start: unexpected data byte 0x01 (expected none)
+```
+
+**Destination.**  In *interactive* mode, debug output goes to
+`stderr`.  In *daemon* mode, it is sent to `syslog` with priority
+`LOG_DEBUG`; on a systemd host this means `journalctl -t sra -p debug`.
 
 ### Unknown commands
 

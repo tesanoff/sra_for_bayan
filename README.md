@@ -82,6 +82,7 @@ sra --daemon [options]               daemon mode (Linux only)
 | `--chord-ch N` | Chord channel, **1-based** (1–16). |
 | `--ctrl-offset N` | Command key zone shift: `-1`, `0`, or `+1`. |
 | `--styles-dir PATH` | Directory containing style files (`style0.mid` …). Default: current working directory. Must not be empty if given. |
+| `--debug` | Enable debug logging of SysEx commands.  In interactive mode, logs go to `stderr`; in daemon mode, to `syslog` (`LOG_DEBUG`).  See [SYSEX.md](SYSEX.md) §11. |
 | `--help` | Show help and exit. |
 | `--version` | Show version and exit. |
 

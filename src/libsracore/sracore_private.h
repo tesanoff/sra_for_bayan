@@ -16,7 +16,7 @@
 /* ------------------------------------------------------------------ */
 #define MAXQUEUE   384
 #define MAXVOICE   64
-#define STYLESIZE  44000
+#define STYLESIZE  110000 // was 44000
 
 /* ------------------------------------------------------------------ */
 /* MIDI channel assignments used by the arranger                        */

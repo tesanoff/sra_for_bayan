@@ -417,6 +417,9 @@ On Windows, use `sendmidi` or a similar MIDI utility.
 ### File Format
 
 - Save as **SMF Format 0**. Name files `style0.mid` through `style127.mid`.
+- **File size limit:** the style must fit in the engine's style buffer,
+  currently **220000 bytes** (about 215 KiB).  Larger files are
+  rejected with `Error(7)`.
 - Place style files in the **same directory** as the SRA executable,
   or point SRA at a dedicated directory with `--styles-dir PATH`
   (Linux daemon mode) / `styles_dir = PATH` (config file).
@@ -567,7 +570,7 @@ SRA, with the old MIDI channel layout. Run `./convert_style.sh` on them
 | `Error(4)` | Style file contains an invalid MIDI channel |
 | `Error(5)` | Style file bar is missing initialization data |
 | `Error(6)` | Style file has insufficient bars |
-| `Error(7)` | Style file data exceeds buffer size |
+| `Error(7)` | Style file data exceeds buffer size (220000 bytes) |
 | `Error(888)` | MIDI input device error |
 | `Error(999)` | MIDI output device error |
 

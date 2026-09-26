@@ -17,6 +17,7 @@ void sra_config_defaults(SraConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
     cfg->chord_ch    = 3;                 /* 1-based: channel 3 */
     cfg->ctrl_offset = 0;
+    cfg->debug       = 0;
 
 #ifdef _WIN32
     /* Default config path on Windows: %APPDATA%\sra\sra.conf.
@@ -55,6 +56,9 @@ void sra_config_print_help(void) {
 "  --ctrl-offset N     shift command key zone: -1, 0, or +1\n"
 "  --styles-dir PATH   directory with style*.mid files\n"
 "                      (default: current working directory)\n"
+"  --debug             enable debug logging of SysEx commands\n"
+"                      (stderr in interactive mode,\n"
+"                       syslog in daemon mode)\n"
 "  --help              show this help and exit\n"
 "  --version           show version and exit\n"
 "\n"
@@ -165,6 +169,9 @@ int sra_config_parse_args(SraConfig *cfg, int argc, char **argv) {
             strncpy(cfg->styles_dir, argv[i], sizeof(cfg->styles_dir) - 1);
             cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
             cfg->has_styles_dir = 1;
+        }
+        else if (strcmp(a, "--debug") == 0) {
+            cfg->debug = 1;
         }
         else {
             fprintf(stderr, "sra: unknown option '%s'\n", a);

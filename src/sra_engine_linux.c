@@ -104,9 +104,9 @@ static void *midi_in_thread_func(void *arg) {
             if (b >= 0xf8) continue;          /* ignore real-time inside SysEx */
             if (sysex_over) continue;         /* still discarding until F7 */
             if (sysex_len >= SRA_SYSEX_MAX) {
-                fprintf(stderr,
-                        "SRA SysEx error: message too long (> %d bytes)\n",
-                        SRA_SYSEX_MAX);
+                sra_log_error(eng->sra,
+                    "SRA SysEx error: message too long (> %d bytes)",
+                    SRA_SYSEX_MAX);
                 sysex_over = 1;
                 continue;
             }

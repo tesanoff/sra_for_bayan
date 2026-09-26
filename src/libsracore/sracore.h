@@ -78,6 +78,19 @@ void     sracore_set_chord_channel(SraCore *sra, int chord_ch);
 /* Install all four callbacks at once. */
 void     sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb);
 
+/* Enable or disable debug logging, and select the log
+   destination.
+   debug:     1 = log every SysEx command (and other debug events)
+              to the selected destination; 0 = silent.
+   is_daemon: 1 = log via syslog(3) with LOG_DEBUG / LOG_ERR;
+              0 = log to stderr (interactive mode).
+
+   Default: debug = 0, is_daemon = 0.
+
+   Must be called before sracore_init(); a call after init is
+   silently ignored. */
+void     sracore_set_logging(SraCore *sra, int debug, int is_daemon);
+
 /* Load the default style (style0.mid) and reset all engine state.
    Calls on_error and does not return on failure.
    sracore_set_offset() and sracore_set_callbacks() must be called first. */

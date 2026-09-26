@@ -164,6 +164,10 @@ struct SraCore {
     /* SysEx control */
     SRABYTE note_cmd_enabled;   /* 1 = Note-On command notes active */
 
+    /* Logging */
+    int debug;                  /* 1 = debug logging enabled */
+    int is_daemon;              /* 1 = log via syslog, 0 = stderr */
+
     /* Per-channel program tracking */
     SRABYTE prog[16][3];
     SRABYTE prog_t[16][3];
@@ -189,6 +193,8 @@ struct SraCore {
 /* sracore.c */
 void sra_append(SraCore *sra, SRABYTE b);
 void sra_do_error(SraCore *sra, int code);
+void sra_log_debug(SraCore *sra, const char *fmt, ...);
+void sra_log_error(SraCore *sra, const char *fmt, ...);
 
 /* True if `ch` (0-based) is an arranger-owned output channel. */
 int  sra_is_arranger_channel(SRABYTE ch);

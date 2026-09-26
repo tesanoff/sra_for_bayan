@@ -87,6 +87,7 @@ static long __stdcall WndProc(HWND hwnd, unsigned int wmsg,
 
         midi_device_probe(&g_midi);
         engine_init(&g_engine, &g_midi, (void *)hwnd);
+        sracore_set_logging(g_engine.sra, g_cfg.debug, 0 /* no daemon */);
         ui_init(&g_ui, hwnd);
 
         if (cfg && cfg->has_styles_dir)
@@ -156,6 +157,8 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrev,
             "  --config PATH       config file path\n"
             "  --chord-ch N        chord channel (1-16)\n"
             "  --ctrl-offset N     command zone shift: -1, 0, +1\n"
+            "  --styles-dir PATH   directory with style*.mid files\n"
+            "  --debug             enable debug logging of SysEx commands\n"
             "  --help              show this help\n"
             "  --version           show version\n"
             "\n"

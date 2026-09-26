@@ -1,6 +1,10 @@
 /* sracore.c — lifecycle, queue, MIDI I/O, public API wrappers */
 
 #include "sracore_private.h"
+#include <stdarg.h>
+#ifndef _WIN32
+#  include <syslog.h>
+#endif
 
 /* ------------------------------------------------------------------ */
 /* Lifecycle                                                            */
@@ -49,6 +53,12 @@ void sracore_set_chord_channel(SraCore *sra, int chord_ch) {
 
 void sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb) {
     sra->cb = *cb;
+}
+
+void sracore_set_logging(SraCore *sra, int debug, int is_daemon) {
+    if (!sra) return;
+    sra->debug     = debug     ? 1 : 0;
+    sra->is_daemon = is_daemon ? 1 : 0;
 }
 
 void sracore_init(SraCore *sra) {
@@ -235,6 +245,46 @@ int sracore_is_ahead(const SraCore *sra) {
 /* ------------------------------------------------------------------ */
 
 void sracore_step(SraCore *sra) { sra_step(sra); }
+
+/* ------------------------------------------------------------------ */
+/* Logging                                                              */
+/* ------------------------------------------------------------------ */
+
+void sra_log_debug(SraCore *sra, const char *fmt, ...) {
+    va_list ap;
+    char    buf[512];
+
+    if (!sra->debug) return;
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+#ifndef _WIN32
+    if (sra->is_daemon) {
+        syslog(LOG_DEBUG, "%s", buf);
+        return;
+    }
+#endif
+    fprintf(stderr, "%s\n", buf);
+}
+
+void sra_log_error(SraCore *sra, const char *fmt, ...) {
+    va_list ap;
+    char    buf[512];
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+#ifndef _WIN32
+    if (sra->is_daemon) {
+        syslog(LOG_ERR, "%s", buf);
+        return;
+    }
+#endif
+    fprintf(stderr, "%s\n", buf);
+}
 
 /* ------------------------------------------------------------------ */
 /* Display queries                                                      */

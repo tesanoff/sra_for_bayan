@@ -18,6 +18,7 @@ typedef struct {
     char out_addr[64];          /* MIDI OUT rawmidi address, e.g. hw:5,1 */
     int  chord_ch;              /* chord channel, 1-based (1..16)       */
     int  ctrl_offset;           /* -1, 0, +1 (same as UI Ctrl Offset)   */
+    int  debug;                 /* 1 = debug logging enabled            */
     char styles_dir[512];       /* directory with style*.mid files      */
     char config_path[256];      /* path to config file                   */
 

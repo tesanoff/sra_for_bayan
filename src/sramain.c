@@ -92,6 +92,7 @@ static int run_daemon(SraConfig *cfg) {
     }
 
     engine_init(&g_engine, &g_midi, NULL);
+    sracore_set_logging(g_engine.sra, cfg->debug, 1 /* is_daemon */);
 
     if (cfg->has_styles_dir)
         sracore_set_styles_dir(g_engine.sra, cfg->styles_dir);
@@ -153,6 +154,7 @@ int main(int argc, char **argv) {
     midi_device_probe(&g_midi);
     ui_init(&g_ui);
     engine_init(&g_engine, &g_midi, NULL);
+    sracore_set_logging(g_engine.sra, cfg.debug, 0 /* interactive */);
 
     /* styles_dir: cfg > cwd (default "." already set by
        sracore_create()).  Empty cfg.styles_dir means "not set". */

@@ -18,6 +18,20 @@
 #define MAXVOICE   64
 #define STYLESIZE  110000 // was 44000
 
+/* Maximum number of bars per section (Intro / Main / Ending).
+   Hard limit of the style format: IL, ML, EL are stored in the
+   velocity of the service NoteOn events, and the engine's session
+   arrays are sized [3][6][SESSION_MAX][...].
+   See SRA-style-file-description.md §3.1.
+
+   Upper bound rationale: SESSION_MAX bars = SESSION_MAX * 480 ticks
+   at PPQ 120 / 4/4.  The VLQ delta limit is 16383 ticks (2 bytes),
+   so SESSION_MAX must satisfy SESSION_MAX * 480 <= 16383, i.e.
+   SESSION_MAX <= 34.  We use 32 — the largest power of two below
+   that bound. */
+#define SESSION_MAX 8
+
+
 /* ------------------------------------------------------------------ */
 /* MIDI channel assignments used by the arranger                        */
 /* ------------------------------------------------------------------ */
@@ -157,10 +171,10 @@ struct SraCore {
     /* Style file data */
     char    styles_dir[512];   /* directory with style*.mid files */
     char    style_name[512];   /* full path of the loaded style   */
-    SRABYTE sty_session_init[3][6][8][16][3];
-    SRABYTE sty_session_note[3][6][8][MAXVOICE / 2][3];
+    SRABYTE sty_session_init[3][6][SESSION_MAX][16][3];
+    SRABYTE sty_session_note[3][6][SESSION_MAX][MAXVOICE / 2][3];
     char    chord_name[12];
-    long    sty_ptr[3][6][8];
+    long    sty_ptr[3][6][SESSION_MAX];
     long    sty_index;      /* current read offset into style_buf */
     SRABYTE *style_buf;     /* malloc'd STYLESIZE bytes */
 

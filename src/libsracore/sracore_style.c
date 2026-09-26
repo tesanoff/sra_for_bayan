@@ -301,9 +301,9 @@ int sra_load_style(SraCore *sra, int style_num) {
     if (sra->tempo < 20  || sra->tempo > 250) { fclose(f); sra_do_error(sra, 3); return 0; }
     if (sra->beat != 2   && sra->beat != 3 &&
         sra->beat != 4   && sra->beat != 6) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->il < 1 || sra->il > 8) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->ml < 1 || sra->ml > 8) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->el < 1 || sra->el > 8) { fclose(f); sra_do_error(sra, 3); return 0; }
+    if (sra->il < 1 || sra->il > SESSION_MAX) { fclose(f); sra_do_error(sra, 3); return 0; }
+    if (sra->ml < 1 || sra->ml > SESSION_MAX) { fclose(f); sra_do_error(sra, 3); return 0; }
+    if (sra->el < 1 || sra->el > SESSION_MAX) { fclose(f); sra_do_error(sra, 3); return 0; }
 
     for (i = 0; i < 3; i++) fgetc(f);
     c = (SRABYTE)fgetc(f);

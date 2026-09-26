@@ -435,9 +435,9 @@ Each style file contains five parameters placed in order in the first bar:
 |-----------|-------|-------------|
 | `Tempo` | 10–125 | Initial tempo — enter **half** the actual BPM value |
 | `Beat` | 2, 3, 4, 6 | Beats per bar |
-| `IL` | 1–8 | Number of bars in the intro section |
-| `ML` \* | 1–8 | Number of bars in the main (normal) section |
-| `EL` | 1–8 | Number of bars in the ending section |
+| `IL` | 1–32 | Number of bars in the intro section |
+| `ML` \* | 1–32 | Number of bars in the main (normal) section |
+| `EL` | 1–32 | Number of bars in the ending section |
 
 > Refer to `style0.mid` using a DAW or MIDI editor for the exact format.
 

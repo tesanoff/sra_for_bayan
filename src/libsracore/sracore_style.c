@@ -243,6 +243,80 @@ void sra_move_com(SraCore *sra, long a, long b) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Style header parser (v2 format)                                      */
+/*                                                                      */
+/* Scans MTrk events until the first non-Meta event, looking for        */
+/* a Sequencer-Specific Meta (FF 7F) with our signature BE EF and       */
+/* version 01.  On success fills sra->tempo/beat/t_time/il/ml_a/        */
+/* ml_b/el and leaves the file positioned at the first body event.      */
+/* On failure reports Error(2) and returns 0.                           */
+/* ------------------------------------------------------------------ */
+
+/* Read a VLQ (up to 2 bytes; v2 does not use longer ones). */
+static long read_vlq_2(FILE *f) {
+    long v = (SRABYTE)fgetc(f);
+    if (v >= 0x80)
+        v = (v - 0x80) * 128 + (SRABYTE)fgetc(f);
+    return v;
+}
+
+int parse_style_header(FILE *f, SraCore *sra) {
+    int     i, k;
+    SRABYTE status, type, len;
+    SRABYTE data[32];
+
+    /* Skip MThd (14 bytes) and MTrk chunk header (8 bytes). */
+    if (fseek(f, 14, SEEK_SET) != 0) { sra_do_error(sra, 2); return 0; }
+    if (fseek(f, 8,  SEEK_CUR) != 0) { sra_do_error(sra, 2); return 0; }
+
+    for (i = 0; i < 64; i++) {          /* max 64 header events */
+        (void)read_vlq_2(f);            /* delta — not used in header */
+        status = (SRABYTE)fgetc(f);
+
+        if (status == 0xFF) {
+            type = (SRABYTE)fgetc(f);
+            len  = (SRABYTE)fgetc(f);
+            if (len > sizeof(data)) { sra_do_error(sra, 2); return 0; }
+            for (k = 0; k < len; k++) data[k] = (SRABYTE)fgetc(f);
+
+            if (type == 0x7F && len == 11 &&
+                data[0] == 0xBE && data[1] == 0xEF) {
+                if (data[2] != 0x01) { sra_do_error(sra, 2); return 0; }
+
+                sra->tempo  = data[3];
+                sra->beat   = data[4];
+                sra->t_time = (long)data[5] * 128 + data[6];
+                sra->il     = data[7];
+                sra->ml_a   = data[8];
+                sra->ml_b   = data[9];
+                sra->el     = data[10];
+                sra->ml     = sra->ml_a;   /* 2a: ml == ml_a */
+
+                if (sra->tempo < 20 || sra->tempo > 250) { sra_do_error(sra, 3); return 0; }
+                if (sra->beat != 2 && sra->beat != 3 &&
+                    sra->beat != 4 && sra->beat != 6)   { sra_do_error(sra, 3); return 0; }
+                if (sra->il   < 1 || sra->il   > SESSION_MAX) { sra_do_error(sra, 3); return 0; }
+                if (sra->ml_a < 1 || sra->ml_a > SESSION_MAX) { sra_do_error(sra, 3); return 0; }
+                if (sra->ml_b < 1 || sra->ml_b > SESSION_MAX) { sra_do_error(sra, 3); return 0; }
+                if (sra->el   < 1 || sra->el   > SESSION_MAX) { sra_do_error(sra, 3); return 0; }
+
+                sra->tempo *= 2;
+                return 1;   /* file is now at the first body event */
+            }
+            /* Not ours — skip and continue. */
+        } else if (status >= 0x80 && status <= 0xEF) {
+            sra_do_error(sra, 2);   /* first body event, no SRA header */
+            return 0;
+        } else {
+            sra_do_error(sra, 2);   /* unexpected byte */
+            return 0;
+        }
+    }
+    sra_do_error(sra, 2);           /* too many header events */
+    return 0;
+}
+
+/* ------------------------------------------------------------------ */
 /* Style file loader                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -281,33 +355,19 @@ int sra_load_style(SraCore *sra, int style_num) {
 
     if (!(f = fopen(sra->style_name, "rb"))) return 0;
 
-    /* Scan for the 0x90 0x00 header marker */
-    for (i = 0; i < 512; i++) {
-        c = (SRABYTE)fgetc(f);
-        if (c == (SRABYTE)0x90 && (c = (SRABYTE)fgetc(f)) == 0x00) break;
+    /* Parse v2 header (Meta FF 7F, signature BE EF). */
+    if (!parse_style_header(f, sra)) {
+        fclose(f);
+        return 0;
     }
-    if (i == 512) { fclose(f); sra_do_error(sra, 2); return 0; }
 
-    sra->tempo = (SRABYTE)fgetc(f); sra->tempo *= 2;
-    for (i = 0; i < 5; i++) fgetc(f);
-    sra->beat = (SRABYTE)fgetc(f);
-    for (i = 0; i < 5; i++) fgetc(f);
-    sra->il   = (SRABYTE)fgetc(f);
-    for (i = 0; i < 5; i++) fgetc(f);
-    sra->ml   = (SRABYTE)fgetc(f);
-    for (i = 0; i < 5; i++) fgetc(f);
-    sra->el   = (SRABYTE)fgetc(f);
-
-    if (sra->tempo < 20  || sra->tempo > 250) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->beat != 2   && sra->beat != 3 &&
-        sra->beat != 4   && sra->beat != 6) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->il < 1 || sra->il > SESSION_MAX) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->ml < 1 || sra->ml > SESSION_MAX) { fclose(f); sra_do_error(sra, 3); return 0; }
-    if (sra->el < 1 || sra->el > SESSION_MAX) { fclose(f); sra_do_error(sra, 3); return 0; }
-
-    for (i = 0; i < 3; i++) fgetc(f);
-    c = (SRABYTE)fgetc(f);
-    sra->t_time = (c >= 0x80) ? (long)(c - 128) * 128 + fgetc(f) : (long)c;
+    /* Skip delta of the first body event (t_time is already known
+       from the header).  The body parser expects to start at the
+       status byte, not at the delta. */
+    {
+        SRABYTE d = (SRABYTE)fgetc(f);
+        if (d >= 0x80) fgetc(f);   /* 2-byte VLQ */
+    }
 
     sra->a_time = session = session_time = sra->sty_ptr[0][0][0] = 0;
     sra_clear_session(sra);

@@ -130,6 +130,7 @@ struct SraCore {
 
     /* Style metadata */
     SRABYTE tempo, beat, il, ml, el;
+    SRABYTE ml_a, ml_b;        /* middle lengths: Original (A), Variation (B) */
 
     /* Chord state */
     SRABYTE          chord_change;
@@ -214,6 +215,7 @@ void sra_set_note_name(char *buf, SRABYTE note);
 /* sracore_style.c */
 void sra_set_clock(SraCore *sra);
 int  sra_load_style(SraCore *sra, int style_num);
+int  parse_style_header(FILE *f, SraCore *sra);
 void sra_clear_session(SraCore *sra);
 void sra_make_session_init(SraCore *sra, long ind, int k, int s, int st);
 void sra_make_session_note(SraCore *sra, long ind);

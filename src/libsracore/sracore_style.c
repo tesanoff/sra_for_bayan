@@ -290,7 +290,6 @@ int parse_style_header(FILE *f, SraCore *sra) {
                 sra->ml_a   = data[8];
                 sra->ml_b   = data[9];
                 sra->el     = data[10];
-                sra->ml     = sra->ml_a;   /* 2a: ml == ml_a */
 
                 if (sra->tempo < 20 || sra->tempo > 250) { sra_do_error(sra, 3); return 0; }
                 if (sra->beat != 2 && sra->beat != 3 &&
@@ -424,8 +423,11 @@ int sra_load_style(SraCore *sra, int style_num) {
             if (session == 0) {
                 if (session_time < (sra->il - 1)) session_time++;
                 else { session_time = 0; session++; }
-            } else if (session == 1 || session == 3) {
-                if (session_time < (sra->ml - 1)) session_time++;
+            } else if (session == 1) {
+                if (session_time < (sra->ml_a - 1)) session_time++;
+                else { session_time = 0; session++; }
+            } else if (session == 3) {
+                if (session_time < (sra->ml_b - 1)) session_time++;
                 else { session_time = 0; session++; }
             } else if (session == 2 || session == 4) {
                 session_time = 0; session++;

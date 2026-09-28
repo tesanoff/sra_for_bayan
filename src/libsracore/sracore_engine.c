@@ -392,7 +392,9 @@ void sra_step(SraCore *sra) {
             sra->session_time = 0;
             sra_lower_on(sra); sra->ief2 = 1;
         } else if (sra->session == 1 || sra->session == 3) {
-            sra->session_time = (sra->session_time + 1) % sra->ml;
+            sra->session_time = (sra->session_time + 1) %
+                                ((sra->session == 1) ? sra->ml_a
+                                                     : sra->ml_b);
         } else if (sra->session == 2 || sra->session == 4) {
             sra->session = 2 * sra->var_f + 1;
             sra->session_time = 0;

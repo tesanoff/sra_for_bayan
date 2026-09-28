@@ -61,6 +61,23 @@ void sracore_set_logging(SraCore *sra, int debug, int is_daemon) {
     sra->is_daemon = is_daemon ? 1 : 0;
 }
 
+void sracore_log_error(SraCore *sra, const char *fmt, ...) {
+    va_list ap;
+    char    buf[512];
+
+    va_start(ap, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, ap);
+    va_end(ap);
+
+#ifndef _WIN32
+    if (sra->is_daemon) {
+        syslog(LOG_ERR, "%s", buf);
+        return;
+    }
+#endif
+    fprintf(stderr, "%s\n", buf);
+}
+
 void sracore_init(SraCore *sra) {
     sra->style_buf = (SRABYTE *)malloc(STYLESIZE);
     if (!sra->style_buf) sra_do_error(sra, 1);

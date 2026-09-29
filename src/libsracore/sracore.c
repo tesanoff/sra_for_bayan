@@ -65,6 +65,11 @@ void sracore_log_error(SraCore *sra, const char *fmt, ...) {
     va_list ap;
     char    buf[512];
 
+    /* `sra` is used only on Linux (syslog dispatch); on Windows it
+       is deliberately unused.  The cast silences -Wunused-parameter
+       in the MinGW build. */
+    (void)sra;
+
     va_start(ap, fmt);
     vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);

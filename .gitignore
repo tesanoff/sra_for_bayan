@@ -4,6 +4,7 @@ build/
 *.a
 *.so
 *.exe
+!build/srawin.exe
 
 # Local test files
 build/style*.mid

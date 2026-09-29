@@ -1,0 +1,19 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.exe
+
+# Local test files
+build/style*.mid
+/style*.mid
+
+# Temporary patch scripts (applied and removed after each session)
+apply_*.py
+fix_*.py
+
+# Editor / OS clutter
+*~
+*.swp
+.DS_Store

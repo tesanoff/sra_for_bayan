@@ -1,10 +1,14 @@
-# Software-based Real-time Arranger — Version 4.06
+# Software-based Real-time Arranger — Version 5.0.0
 
 **06-26-2026 · ZZ-Denis @ NazoMusic**
 
-**Fork is maintained by Alexander Tesanov (https://tesanoff.klah.ru).**
+**Fork maintained by Alexander Tesanov (https://tesanoff.klah.ru).**
+Original project: https://github.com/imzzdenis/sra
 
-The original project is here: https://github.com/imzzdenis/sra
+> **This fork is a hard fork.**  The style file format (v2) and the
+> MIDI channel layout differ from the upstream project.  Style files
+> created for upstream SRA (v4.x and earlier) will **not load** in
+> this version.  See "Migrating Old Style Files" below.
 
 ---
 
@@ -56,8 +60,11 @@ convention the MIDI note numbers map to note names as follows:
 1. Provides real-time intelligent auto-accompaniment (simulates a live arranger keyboard).
 2. Chords are detected on a configurable MIDI channel (see *Chord Ch*);
    notes on all other channels are forwarded as live playing.
-3. Style files use **SMF format (MIDI Format 0)** and can be user-created.
-   *(SMF Format 1 is not supported.)*
+3. Style files use **SMF format (MIDI Format 0)** with the SRA v2
+   header (a Sequencer-Specific Meta event `FF 7F 0B BE EF 01 ...`).
+   See [SRA-style-file-description.md](SRA-style-file-description.md)
+   for the exact format.  *(SMF Format 1 is not supported.)*
+   **Old-style files (pre-v2) are not compatible and will not load.**
 4. Fully controlled via the MIDI keyboard and/or **SysEx** messages;
    no computer keyboard required.
 5. Runs either interactively (terminal UI) or as a background
@@ -430,27 +437,32 @@ On Windows, use `sendmidi` or a similar MIDI utility.
 
 ### Parameters
 
-Each style file contains five parameters placed in order in the first bar:
+Each style file contains seven parameters stored in a single
+Sequencer-Specific Meta event at the very beginning of the track:
 
 | Parameter | Range | Description |
 |-----------|-------|-------------|
 | `Tempo` | 10–125 | Initial tempo — enter **half** the actual BPM value |
 | `Beat` | 2, 3, 4, 6 | Beats per bar |
+| `t_time` | 1–16383 | Bar length in ticks (usually `120 × Beat`) |
 | `IL` | 1–32 | Number of bars in the intro section |
-| `ML` \* | 1–32 | Number of bars in the main (normal) section |
+| `ML_A` | 1–32 | Number of bars in the **Original** section |
+| `ML_B` | 1–32 | Number of bars in the **Variation** section |
 | `EL` | 1–32 | Number of bars in the ending section |
 
-> Refer to `style0.mid` using a DAW or MIDI editor for the exact format.
+> Refer to [SRA-style-file-description.md](SRA-style-file-description.md)
+> for the exact byte layout, and to `tools/make_test_style_v2.py`
+> for a working reference generator.
 
 ### Section Order (from bar 2 onwards)
 
 ```
-Chord C  : Intro → Original×ML → Original-to-Variation fill
-         → Variation×ML → Variation-to-Original fill → Ending →
-Chord Cm : Intro → Original×ML → Original-to-Variation fill
-         → Variation×ML → Variation-to-Original fill → Ending →
-Chord C7 : Intro → Original×ML → Original-to-Variation fill
-         → Variation×ML → Variation-to-Original fill → Ending
+Chord C  : Intro → Original×ML_A → Original-to-Variation fill
+         → Variation×ML_B → Variation-to-Original fill → Ending →
+Chord Cm : Intro → Original×ML_A → Original-to-Variation fill
+         → Variation×ML_B → Variation-to-Original fill → Ending →
+Chord C7 : Intro → Original×ML_A → Original-to-Variation fill
+         → Variation×ML_B → Variation-to-Original fill → Ending
 ```
 
 - Each style bar must begin with initialization commands (e.g. MIDI PATCH / BANK settings).
@@ -492,25 +504,25 @@ Chord C7 : Intro → Original×ML → Original-to-Variation fill
 
 ## Migrating Old Style Files
 
-Earlier versions of SRA used different MIDI channels for the
-accompaniment parts (1, 4, 5, 6, 7). The current version uses
-channels 7, 8, 10, 11, 12 (0-based; see above). If you have style
-files created for the old channel layout, they must be migrated.
+Earlier versions of SRA used a different style file format
+(parameters encoded as service NoteOn velocities) and a different
+MIDI channel layout.  The current version requires the **v2
+format** (a Sequencer-Specific Meta event at the start of the
+track) and channels 6, 7, 8, 9, 10, 11, 12, 15 (0-based; see the
+table above).
 
-A helper script is provided:
+**Old style files cannot be loaded by this version.**  They must
+be regenerated from source.  For Korg `.STY` sources, use the
+`stg2sra` converter (maintained separately; it emits v2 files
+directly).
 
-```sh
-./convert_style.sh style0.mid style1.mid style2.mid
-```
+The `convert_style.sh` helper from previous versions has been
+removed: it migrated only the old channel layout and still
+produced old-format files, which this version no longer accepts.
 
-It creates a `.bak` backup next to each file, remaps the channels
-in place, and verifies the result. Requires `midicsv` / `csvmidi`
-(`sudo apt install midicsv` on Debian/Ubuntu).
-
-Channel 0 (style header) and channel 9 (drum) are left untouched.
-If the script finds any other channel, it refuses to migrate the
-file and reports an error — this usually means the file is not
-a valid SRA style.
+To create a new style from scratch, see
+[SRA-style-file-description.md](SRA-style-file-description.md)
+and `tools/make_test_style_v2.py`.
 
 ---
 
@@ -555,9 +567,11 @@ or `F0 7D 08 F7` (Tempo −) via SysEx.
 
 **3. My old style files no longer load — why?**
 
-You are probably using style files created for an earlier version of
-SRA, with the old MIDI channel layout. Run `./convert_style.sh` on them
-(see "Migrating Old Style Files" above).
+You are probably using style files created for an earlier version
+of SRA.  The current version uses a new style file format (v2)
+and a different MIDI channel layout.  Old files cannot be loaded
+by this version — they must be regenerated from source.  See
+"Migrating Old Style Files" above.
 
 ---
 

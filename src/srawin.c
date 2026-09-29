@@ -18,7 +18,7 @@ static SraConfig   g_cfg;
 
 static const char *const APP_CLASS = "MyWndClass";
 static const char *const APP_TITLE =
-    "Software-based Real-time Arranger Version 4.06 by ZZ-Denis @ NazoMusic";
+    "Software-based Real-time Arranger Version 5.0.0 by ZZ-Denis @ NazoMusic";
 
 /* ---- helpers ---- */
 

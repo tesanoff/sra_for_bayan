@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SRACORE_VERSION "1.3"
+#define SRACORE_VERSION "5.0.0"
 
 /* ------------------------------------------------------------------ */
 /* Sizes / limits                                                        */
@@ -195,7 +195,6 @@ struct SraCore {
 void sra_append(SraCore *sra, SRABYTE b);
 void sra_do_error(SraCore *sra, int code);
 void sra_log_debug(SraCore *sra, const char *fmt, ...);
-void sra_log_error(SraCore *sra, const char *fmt, ...);
 
 /* True if `ch` (0-based) is an arranger-owned output channel. */
 int  sra_is_arranger_channel(SRABYTE ch);

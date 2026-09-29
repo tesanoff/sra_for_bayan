@@ -28,7 +28,7 @@ void ui_print_state(AppUI *ui, MidiDevice *dev, AppState *app) {
 
     /* ANSI: clear screen, cursor home */
     printf("\033[2J\033[H");
-    printf("Software-based Real-time Arranger v4.06 by ZZ-Denis @ NazoMusic\n");
+    printf("Software-based Real-time Arranger v5.0.0 by ZZ-Denis @ NazoMusic\n");
     printf("===============================================================\n\n");
 
     if (dev->in_count == 0 && dev->out_count == 0) {

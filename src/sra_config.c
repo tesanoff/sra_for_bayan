@@ -7,7 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#define SRA_VERSION_STR "4.06"
+#define SRA_VERSION_STR "5.0.0"
 
 /* ------------------------------------------------------------------ */
 /* Defaults                                                             */
@@ -69,7 +69,7 @@ void sra_config_print_help(void) {
 }
 
 void sra_config_print_version(void) {
-    printf("sra " SRA_VERSION_STR " (libsracore 1.3)\n");
+    printf("sra " SRA_VERSION_STR " (libsracore 5.0.0)\n");
 }
 
 /* ------------------------------------------------------------------ */

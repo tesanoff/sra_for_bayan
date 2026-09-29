@@ -96,11 +96,6 @@ void     sracore_set_logging(SraCore *sra, int debug, int is_daemon);
    regardless of the debug flag. */
 void     sracore_log_error(SraCore *sra, const char *fmt, ...);
 
-/* Log a message at ERROR level.  Goes to stderr in interactive
-   mode, to syslog(LOG_ERR) in daemon mode.  Always emitted,
-   regardless of the debug flag. */
-void     sracore_log_error(SraCore *sra, const char *fmt, ...);
-
 /* Load the default style (style0.mid) and reset all engine state.
    Calls on_error and does not return on failure.
    sracore_set_offset() and sracore_set_callbacks() must be called first. */

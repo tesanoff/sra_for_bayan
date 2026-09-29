@@ -286,23 +286,6 @@ void sra_log_debug(SraCore *sra, const char *fmt, ...) {
     fprintf(stderr, "%s\n", buf);
 }
 
-void sra_log_error(SraCore *sra, const char *fmt, ...) {
-    va_list ap;
-    char    buf[512];
-
-    va_start(ap, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, ap);
-    va_end(ap);
-
-#ifndef _WIN32
-    if (sra->is_daemon) {
-        syslog(LOG_ERR, "%s", buf);
-        return;
-    }
-#endif
-    fprintf(stderr, "%s\n", buf);
-}
-
 /* ------------------------------------------------------------------ */
 /* Display queries                                                      */
 /* ------------------------------------------------------------------ */

@@ -360,9 +360,10 @@ int sra_load_style(SraCore *sra, int style_num) {
         return 0;
     }
 
-    /* Skip delta of the first body event (t_time is already known
-       from the header).  The body parser expects to start at the
-       status byte, not at the delta. */
+    /* Skip delta of the first body event.
+       In v2, t_time comes from the Meta header, so this delta
+       carries no information.  The body parser below expects to
+       start at the status byte, not at the delta. */
     {
         SRABYTE d = (SRABYTE)fgetc(f);
         if (d >= 0x80) fgetc(f);   /* 2-byte VLQ */

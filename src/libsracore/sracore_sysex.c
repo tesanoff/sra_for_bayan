@@ -96,11 +96,11 @@ static void sx_error(SraCore *sra, SRABYTE cmd, const char *detail) {
     const char *name = sysex_cmd_name(cmd);
 
     if (name)
-        sra_log_error(sra, "SRA SysEx error: CMD 0x%02X %s: %s",
-                      (unsigned)cmd, name, detail);
+        sracore_log_error(sra, "SRA SysEx error: CMD 0x%02X %s: %s",
+                          (unsigned)cmd, name, detail);
     else
-        sra_log_error(sra, "SRA SysEx error: CMD 0x%02X: %s",
-                      (unsigned)cmd, detail);
+        sracore_log_error(sra, "SRA SysEx error: CMD 0x%02X: %s",
+                          (unsigned)cmd, detail);
 }
 
 /* ------------------------------------------------------------------ */
@@ -440,7 +440,7 @@ void sracore_sysex_in(SraCore *sra, const SRABYTE *data, int len) {
 
     /* Bare manufacturer ID with no command byte. */
     if (len < 2) {
-        sra_log_error(sra,
+        sracore_log_error(sra,
             "SRA SysEx error: missing CMD byte (message too short)");
         return;
     }

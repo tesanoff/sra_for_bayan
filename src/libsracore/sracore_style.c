@@ -18,15 +18,30 @@ void sra_set_clock(SraCore *sra) {
 
 void sra_inc_voice(SraCore *sra, SRABYTE cmd, SRABYTE note, SRABYTE vel) {
     int i;
+    /* Idempotence: if (cmd, note) is already active, update velocity.
+       This prevents duplicate entries in voice[] when the style has
+       repeated NoteOn for the same note without intermediate NoteOff. */
+    for (i = 0; i < MAXVOICE; i++) {
+        if (sra->voice[i][0] == cmd && sra->voice[i][1] == note) {
+            sra->voice[i][2] = vel;
+            DBG("inc(dup) ch=%d note=%d vel=%d -> vc=%d\n",
+                cmd & 0x0f, note, vel, sra->voice_count);
+            return;
+        }
+    }
     for (i = 0; i < MAXVOICE; i++) {
         if (sra->voice[i][0] == 0x00) {
             sra->voice[i][0] = cmd;
             sra->voice[i][1] = note;
             sra->voice[i][2] = vel;
             sra->voice_count++;
+            DBG("inc ch=%d note=%d vel=%d -> vc=%d\n",
+                cmd & 0x0f, note, vel, sra->voice_count);
             return;
         }
     }
+    DBG("inc FULL ch=%d note=%d vel=%d (vc=%d)\n",
+        cmd & 0x0f, note, vel, sra->voice_count);
 }
 
 void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE note) {
@@ -35,15 +50,38 @@ void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE note) {
         if (sra->voice[i][0] == cmd && sra->voice[i][1] == note) {
             sra->voice[i][0] = 0x00;
             sra->voice_count--;
+            DBG("dec ch=%d note=%d -> vc=%d\n",
+                cmd & 0x0f, note, sra->voice_count);
             return;
         }
     }
+    DBG("dec NOT FOUND ch=%d note=%d (vc=%d)\n",
+        cmd & 0x0f, note, sra->voice_count);
+#ifdef SRA_DEBUG_VOICE
+    /* Detail dump for Acc1 (ch=8): show all active voices on this channel */
+    if ((cmd & 0x0f) == 8) {
+        DBG("  -- active voices on ch=8 --\n");
+        for (i = 0; i < MAXVOICE; i++) {
+            if (sra->voice[i][0] == cmd) {
+                DBG("    voice[%d] ch=%d note=%d vel=%d\n",
+                    i, cmd & 0x0f, sra->voice[i][1], sra->voice[i][2]);
+            }
+        }
+    }
+#endif
 }
 
 void sra_all_note_off(SraCore *sra) {
     int i;
+#ifdef SRA_DEBUG_VOICE
+    int _before = sra->voice_count;
+    DBG("all_note_off: before=%d\n", _before);
+#endif
     for (i = 0; sra->voice_count; i++) {
         if (sra->voice[i][0] != 0x00) {
+            DBG("  off ch=%d note=%d vel=%d\n",
+                sra->voice[i][0] & 0x0f,
+                sra->voice[i][1], sra->voice[i][2]);
             sra_append(sra, sra->voice[i][0]);
             sra_append(sra, sra->voice[i][1]);
             sra_append(sra, 0x00);
@@ -51,6 +89,21 @@ void sra_all_note_off(SraCore *sra) {
             sra->voice_count--;
         }
     }
+#ifdef SRA_DEBUG_VOICE
+    DBG("all_note_off: after=%d (was %d)\n", sra->voice_count, _before);
+    {
+        int k;
+        for (k = 0; k < 16; k++) {
+            unsigned long on  = sra->out_noteon[k];
+            unsigned long off = sra->out_noteoff[k];
+            if (on || off) {
+                long diff = (long)on - (long)off;
+                DBG("  OUT ch=%d on=%lu off=%lu diff=%+ld\n",
+                    k, on, off, diff);
+            }
+        }
+    }
+#endif
     sra->bass_lock = -1;
 }
 
@@ -202,7 +255,7 @@ void sra_make_session_note(SraCore *sra, long ind) {
 
 void sra_save_session_note(SraCore *sra, int k, int s, int st) {
     int i, j;
-    for (i = 0, j = 0; i < MAXVOICE && j < (MAXVOICE / 2 - 1); i++) {
+    for (i = 0, j = 0; i < MAXVOICE && j < (MAXVOICE - 1); i++) {
         if (sra->voice[i][0] != 0x00) {
             sra->sty_session_note[k][s][st][j][0] = sra->voice[i][0];
             sra->sty_session_note[k][s][st][j][1] = sra->voice[i][1];

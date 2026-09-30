@@ -118,6 +118,8 @@ void sra_chord_on(SraCore *sra) {
 /* ------------------------------------------------------------------ */
 
 void sra_set_chord(SraCore *sra, SRABYTE root, ChordTypeId type) {
+    DBG("set_chord: root=%d type=%d kind=%d\n",
+        root, (int)type, (int)CHORD_TABLE[type].kind);
     sra->bass      = sra->key_on[0][0] % 12;
     sra->chordd    = root % 12;
     sra->key_change = 1;

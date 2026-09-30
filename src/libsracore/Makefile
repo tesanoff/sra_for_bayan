@@ -12,7 +12,7 @@
 # (supports BITS=32 → i686-w64-mingw32-gcc without changes here).
 
 CC     ?= gcc
-CFLAGS  = -Wall -Wextra -O2 -std=gnu99
+CFLAGS  = -DSRA_DEBUG_VOICE -Wall -Wextra -O2 -std=gnu99
 AR      = ar
 ARFLAGS = rcs
 

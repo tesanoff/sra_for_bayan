@@ -11,11 +11,18 @@
 
 #define SRACORE_VERSION "5.0.0"
 
+/* ---- Debug output (enabled with -DSRA_DEBUG_VOICE) ---- */
+#ifdef SRA_DEBUG_VOICE
+#  define DBG(...) fprintf(stderr, "[DBG] " __VA_ARGS__)
+#else
+#  define DBG(...) ((void)0)
+#endif
+
 /* ------------------------------------------------------------------ */
 /* Sizes / limits                                                        */
 /* ------------------------------------------------------------------ */
-#define MAXQUEUE   384
-#define MAXVOICE   64
+#define MAXQUEUE   4096
+#define MAXVOICE   256
 #define STYLESIZE  220000 // was 44000
 
 /* Maximum number of bars per section (Intro / Main / Ending).
@@ -165,6 +172,12 @@ struct SraCore {
     /* SysEx control */
     SRABYTE note_cmd_enabled;   /* 1 = Note-On command notes active */
 
+#ifdef SRA_DEBUG_VOICE
+    /* Counters for MIDI OUT (per channel, 0..15) */
+    unsigned long out_noteon[16];
+    unsigned long out_noteoff[16];
+#endif
+
     /* Logging */
     int debug;                  /* 1 = debug logging enabled */
     int is_daemon;              /* 1 = log via syslog, 0 = stderr */
@@ -177,7 +190,7 @@ struct SraCore {
     char    styles_dir[512];   /* directory with style*.mid files */
     char    style_name[512];   /* full path of the loaded style   */
     SRABYTE sty_session_init[3][6][SESSION_MAX][16][3];
-    SRABYTE sty_session_note[3][6][SESSION_MAX][MAXVOICE / 2][3];
+    SRABYTE sty_session_note[3][6][SESSION_MAX][MAXVOICE][3];
     char    chord_name[12];
     long    sty_ptr[3][6][SESSION_MAX];
     long    sty_index;      /* current read offset into style_buf */

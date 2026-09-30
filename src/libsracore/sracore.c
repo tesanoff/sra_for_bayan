@@ -233,8 +233,17 @@ int sracore_drain_output(SraCore *sra, SRABYTE buf[3]) {
     d2 = sra->queue[(sra->que_h + 1) % MAXQUEUE];
 
     switch (msg2) {
-    case 0x90: case 0xa0: case 0xb0: case 0xe0:
+    case 0x80: case 0x90: case 0xa0: case 0xb0: case 0xe0:
         buf[0] = status; buf[1] = d1; buf[2] = d2;
+#ifdef SRA_DEBUG_VOICE
+        if (msg2 == 0x90) {
+            SRABYTE outch = status & 0x0f;
+            if (d2 > 0) sra->out_noteon[outch]++;
+            else        sra->out_noteoff[outch]++;
+        } else if (msg2 == 0x80) {
+            sra->out_noteoff[status & 0x0f]++;
+        }
+#endif
         sra->que_h = (sra->que_h + 2) % MAXQUEUE;
         n = 3;
         break;

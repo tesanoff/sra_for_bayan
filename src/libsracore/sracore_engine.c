@@ -19,6 +19,9 @@ void sra_count_note(SraCore *sra) {
     int      sess = (int)sra->session;
     int      stime= (int)sra->session_time;
 
+    DBG("count_note: kind=%d sess=%d stime=%d a_time=%ld sty_ptr=%ld\n",
+        kind, sess, stime, sra->a_time, sra->sty_ptr[kind][sess][stime]);
+
     if (stime >= 1) {
         /* Apply program-change initialisers from the previous measure */
         for (i = 0; i < 16; i++) {
@@ -29,19 +32,15 @@ void sra_count_note(SraCore *sra) {
                 sra_prog_change(sra, (SRABYTE)(i & 0x0f));
             }
         }
-        /* Re-play notes from the previous measure's voice snapshot */
-        for (i = 0; sra->sty_session_note[kind][sess][stime-1][i][0]; i++) {
-            c = sra->sty_session_note[kind][sess][stime-1][i][0];
-            d = sra->sty_session_note[kind][sess][stime-1][i][1];
-            e = sra->sty_session_note[kind][sess][stime-1][i][2];
-            if ((c & 0x0f) == ACC3 || (c & 0x0f) == ACC4 ||
-                (c & 0x0f) == ACC5 || (c & 0x0f) == PHRASE) {
-                e  = (SRABYTE)(e * sra->acc_vf * sra->chord_c);
-                d += sra->chord_v[d % 12];
-                d += sra->chordd;
-                if (sra->chordd >= 8) d -= 12;
+        /* EXPERIMENT: session snapshot restore DISABLED.
+           See if this removes the residual hanging notes on ch=11/12. */
+        if (0) {
+            for (i = 0; sra->sty_session_note[kind][sess][stime-1][i][0]; i++) {
+                c = sra->sty_session_note[kind][sess][stime-1][i][0];
+                d = sra->sty_session_note[kind][sess][stime-1][i][1];
+                e = sra->sty_session_note[kind][sess][stime-1][i][2];
+                sra_inc_voice(sra, c, d, e);
             }
-            sra_inc_voice(sra, c, d, e);
         }
     }
 
@@ -67,16 +66,21 @@ void sra_count_note(SraCore *sra) {
         if (sra->last_sty_msg <= (SRABYTE)0xbf ||
             sra->last_sty_msg >= (SRABYTE)0xe0) {
             e = buf[base + (++sra->sty_index)];
-            if ((sra->last_sty_msg & 0xf0) == 0x90) {
-                SRABYTE ch = sra->last_sty_msg & 0x0f;
-                if (ch == ACC3 || ch == ACC4 ||
-                    ch == ACC5 || ch == PHRASE) {
-                    e  = (SRABYTE)(e * sra->acc_vf * sra->chord_c);
+            /* NoteOn (0x90) or NoteOff (0x80).  Normalise cmd to
+               0x90|ch, force vel = 0 on NoteOff. */
+            SRABYTE msg_type = sra->last_sty_msg & 0xf0;
+            if (msg_type == 0x80 || msg_type == 0x90) {
+                SRABYTE norm_cmd = 0x90 | (sra->last_sty_msg & 0x0f);
+                SRABYTE vel_eff  = (msg_type == 0x80) ? 0 : e;
+                SRABYTE ch = norm_cmd & 0x0f;
+                if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
+                    ch==ACC5||ch==PHRASE) {
+                    vel_eff = (SRABYTE)(vel_eff * sra->acc_vf * sra->chord_c);
                     d += sra->chord_v[d % 12];
                     d += sra->chordd;
                     if (sra->chordd >= 8) d -= 12;
                 } else if (ch == ACCBASS) {
-                    e = (SRABYTE)(e * sra->acc_bass_vf * sra->chord_c);
+                    vel_eff = (SRABYTE)(vel_eff * sra->acc_bass_vf * sra->chord_c);
                     if (sra->chordd == sra->bass) {
                         if (d % 12 != 0) d += sra->chord_v[d % 12];
                         d += sra->chordd;
@@ -85,11 +89,24 @@ void sra_count_note(SraCore *sra) {
                         d = sra->bass + 24;
                     }
                     if (d < 28) d += 12;
+                } else if (ch == DRUM) {
+                    vel_eff = (SRABYTE)(vel_eff * sra->drum_vf);
                 } else {
-                    e = 0;
+                    vel_eff = 0;
                 }
-                if (e) sra_inc_voice(sra, c, d, e);
-                else   sra_dec_voice(sra, c, d);
+                if (ch != DRUM) {
+#ifdef SRA_DEBUG_VOICE
+                    if (ch == 11) {
+                        DBG("%s ch=11 %s note=%d vel=%d vc=%d\n",
+                            __func__,
+                            (msg_type == 0x80) ? "OFF" :
+                            (msg_type == 0x90) ? "ON " : "OTH",
+                            d, vel_eff, sra->voice_count);
+                    }
+#endif
+                    if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
+                    else         sra_dec_voice(sra, norm_cmd, d);
+                }
             } else if ((c & 0xb0) == 0xb0) {
                 if (d == 0)  sra->prog_t[c & 0x0f][0] = e;
                 else if (d == 32) sra->prog_t[c & 0x0f][1] = e;
@@ -155,40 +172,57 @@ void sra_dump_sty(SraCore *sra) {
         if (sra->last_sty_msg <= (SRABYTE)0xbf ||
             sra->last_sty_msg >= (SRABYTE)0xe0) {
             e = buf[base + (++sra->sty_index)];
-            if ((sra->last_sty_msg & 0xf0) == 0x90) {
-                SRABYTE ch = sra->last_sty_msg & 0x0f;
-                if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
-                    ch==ACC5||ch==PHRASE) {
-                    e  = (SRABYTE)(e * sra->acc_vf * sra->chord_c);
-                    d += sra->chord_v[d % 12];
-                    d += sra->chordd;
-                    if (sra->chordd >= 8) d -= 12;
-                } else if (ch == ACCBASS) {
-                    e = (SRABYTE)(e * sra->acc_bass_vf * sra->chord_c);
-                    if (sra->chordd == sra->bass) {
-                        if (d % 12 != 0) d += sra->chord_v[d % 12];
+            /* NoteOn (0x90) or NoteOff (0x80).  Normalise to 0x90|ch
+               so that sra_dec_voice finds the voice recorded by
+               sra_inc_voice at NoteOn time.  NoteOff forces vel = 0. */
+            {
+                SRABYTE msg_type = sra->last_sty_msg & 0xf0;
+                if (msg_type == 0x80 || msg_type == 0x90) {
+                    SRABYTE norm_cmd = 0x90 | (sra->last_sty_msg & 0x0f);
+                    SRABYTE vel_eff  = (msg_type == 0x80) ? 0 : e;
+                    SRABYTE ch = norm_cmd & 0x0f;
+                    if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
+                        ch==ACC5||ch==PHRASE) {
+                        vel_eff  = (SRABYTE)(vel_eff * sra->acc_vf * sra->chord_c);
+                        d += sra->chord_v[d % 12];
                         d += sra->chordd;
-                        if (sra->chordd >= 4) d -= 12;
+                        if (sra->chordd >= 8) d -= 12;
+                    } else if (ch == ACCBASS) {
+                        vel_eff = (SRABYTE)(vel_eff * sra->acc_bass_vf * sra->chord_c);
+                        if (sra->chordd == sra->bass) {
+                            if (d % 12 != 0) d += sra->chord_v[d % 12];
+                            d += sra->chordd;
+                            if (sra->chordd >= 4) d -= 12;
+                        } else {
+                            d = sra->bass + 24;
+                        }
+                        if (d < 28) d += 12;
+                        if (sra->bass_lock == 0 && vel_eff) {
+                            sra->bass_o = d;
+                            d = sra->bass + 24;
+                            if (d < 28) d += 12;
+                            sra->bass_lock = 1;
+                        } else if (sra->bass_lock == 1 && !vel_eff && d == sra->bass_o) {
+                            d = sra->bass + 24;
+                            if (d < 28) d += 12;
+                            sra->bass_lock = -1;
+                        }
                     } else {
-                        d = sra->bass + 24;
+                        vel_eff = (SRABYTE)(vel_eff * sra->drum_vf);
                     }
-                    if (d < 28) d += 12;
-                    if (sra->bass_lock == 0 && e) {
-                        sra->bass_o = d;
-                        d = sra->bass + 24;
-                        if (d < 28) d += 12;
-                        sra->bass_lock = 1;
-                    } else if (sra->bass_lock == 1 && !e && d == sra->bass_o) {
-                        d = sra->bass + 24;
-                        if (d < 28) d += 12;
-                        sra->bass_lock = -1;
+                    if (ch != DRUM) {
+#ifdef SRA_DEBUG_VOICE
+                        if (ch == 11) {
+                            DBG("%s ch=11 %s note=%d vel=%d vc=%d\n",
+                                __func__,
+                                (msg_type == 0x80) ? "OFF" :
+                                (msg_type == 0x90) ? "ON " : "OTH",
+                                d, vel_eff, sra->voice_count);
+                        }
+#endif
+                        if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
+                        else         sra_dec_voice(sra, norm_cmd, d);
                     }
-                } else {
-                    e = (SRABYTE)(e * sra->drum_vf);
-                }
-                if ((sra->last_sty_msg & 0x0f) != DRUM) {
-                    if (e) sra_inc_voice(sra, sra->last_sty_msg, d, e);
-                    else   sra_dec_voice(sra, sra->last_sty_msg, d);
                 }
             }
             if ((c & 0xb0) == 0xb0) {
@@ -354,6 +388,9 @@ void sra_step(SraCore *sra) {
     sra->clock3 = (sra->clock3 + 1) % 5;
 
     if (sra->key_change) {
+        DBG("key_change: kind=%d sess=%ld stime=%ld a_time=%ld vc=%d\n",
+            (int)sra->chord_k, sra->session, sra->session_time,
+            sra->a_time, sra->voice_count);
         sra_all_note_off(sra);
         sra_count_note(sra);
         sra->key_change = 0;

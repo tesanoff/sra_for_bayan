@@ -190,7 +190,6 @@ struct SraCore {
     char    styles_dir[512];   /* directory with style*.mid files */
     char    style_name[512];   /* full path of the loaded style   */
     SRABYTE sty_session_init[3][6][SESSION_MAX][16][3];
-    SRABYTE sty_session_note[3][6][SESSION_MAX][MAXVOICE][3];
     char    chord_name[12];
     long    sty_ptr[3][6][SESSION_MAX];
     long    sty_index;      /* current read offset into style_buf */
@@ -228,10 +227,7 @@ void sra_set_note_name(char *buf, SRABYTE note);
 void sra_set_clock(SraCore *sra);
 int  sra_load_style(SraCore *sra, int style_num);
 int  parse_style_header(FILE *f, SraCore *sra);
-void sra_clear_session(SraCore *sra);
 void sra_make_session_init(SraCore *sra, long ind, int k, int s, int st);
-void sra_make_session_note(SraCore *sra, long ind);
-void sra_save_session_note(SraCore *sra, int k, int s, int st);
 void sra_move_com(SraCore *sra, long a, long b);
 void sra_inc_voice(SraCore *sra, SRABYTE cmd, SRABYTE note, SRABYTE vel);
 void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE note);

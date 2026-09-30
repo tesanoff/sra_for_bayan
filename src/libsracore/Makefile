@@ -13,6 +13,7 @@
 
 CC     ?= gcc
 CFLAGS  = -DSRA_DEBUG_VOICE -Wall -Wextra -O2 -std=gnu99
+#CFLAGS  = -Wall -Wextra -O2 -std=gnu99
 AR      = ar
 ARFLAGS = rcs
 

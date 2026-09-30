@@ -12,135 +12,142 @@
 /* ------------------------------------------------------------------ */
 
 void sra_count_note(SraCore *sra) {
-    int     i, j;
     SRABYTE c, d, e;
     SRABYTE *buf  = sra->style_buf;
     int      kind = (int)sra->chord_k;
     int      sess = (int)sra->session;
     int      stime= (int)sra->session_time;
+    long     base;
+    long     cur_tick, target;
+    int      cur_stime;
 
-    DBG("count_note: kind=%d sess=%d stime=%d a_time=%ld sty_ptr=%ld\n",
-        kind, sess, stime, sra->a_time, sra->sty_ptr[kind][sess][stime]);
+    DBG("count_note: kind=%d sess=%d stime=%d a_time=%ld (mroll section)\n",
+        kind, sess, stime, sra->a_time);
 
-    if (stime >= 1) {
-        /* Apply program-change initialisers from the previous measure */
-        for (i = 0; i < 16; i++) {
-            if (sra->sty_session_init[kind][sess][stime-1][i][0]) {
-                sra->prog_t[i][0] = sra->sty_session_init[kind][sess][stime-1][i][0];
-                sra->prog_t[i][1] = sra->sty_session_init[kind][sess][stime-1][i][1];
-                sra->prog_t[i][2] = sra->sty_session_init[kind][sess][stime-1][i][2];
-                sra_prog_change(sra, (SRABYTE)(i & 0x0f));
-            }
-        }
-        /* EXPERIMENT: session snapshot restore DISABLED.
-           See if this removes the residual hanging notes on ch=11/12. */
-        if (0) {
-            for (i = 0; sra->sty_session_note[kind][sess][stime-1][i][0]; i++) {
-                c = sra->sty_session_note[kind][sess][stime-1][i][0];
-                d = sra->sty_session_note[kind][sess][stime-1][i][1];
-                e = sra->sty_session_note[kind][sess][stime-1][i][2];
-                sra_inc_voice(sra, c, d, e);
-            }
-        }
-    }
+    /* Mroll the style from the beginning of the current section up to
+       the current position (stime, a_time).  No snapshots involved.
+       The voice[] table is assumed to be empty on entry (sra_all_note_off
+       was called just before). */
+    base      = sra->sty_ptr[kind][sess][0];
+    cur_tick  = 0;
+    cur_stime = 0;
+    target    = (long)stime * sra->t_time + sra->a_time;
 
-    /* Replay style events up to the current tick position */
-    sra->b_time  = 0;
-    sra->sty_index = -1;
+    sra->sty_index    = -1;
+    sra->last_sty_msg = 0x90 | ACC1;  /* sanity default for running status */
 
-    while (sra->b_time < sra->a_time) {
-        long base = sra->sty_ptr[kind][sess][stime];
+    while (cur_tick < target) {
+        long delta;
+
         c = buf[base + (++sra->sty_index)];
         if (c >= 0x80) {
             if (c == (SRABYTE)0xff) {
-                sra->msg = (SRABYTE)(CMD_START + sra->offset);
-                sra_check_com(sra);
-                break;
+#ifdef SRA_DEBUG_VOICE
+                DBG("count_note: 0xff a_time=%ld cur_tick=%ld sty_index=%ld\n",
+                    sra->a_time, cur_tick, sra->sty_index);
+#endif
+                break;    /* EndOfTrack */
             }
             sra->last_sty_msg = c;
             d = buf[base + (++sra->sty_index)];
         } else {
-            d = c; c = sra->last_sty_msg;
+            d = c;
+            c = sra->last_sty_msg;
         }
 
         if (sra->last_sty_msg <= (SRABYTE)0xbf ||
             sra->last_sty_msg >= (SRABYTE)0xe0) {
             e = buf[base + (++sra->sty_index)];
-            /* NoteOn (0x90) or NoteOff (0x80).  Normalise cmd to
-               0x90|ch, force vel = 0 on NoteOff. */
-            SRABYTE msg_type = sra->last_sty_msg & 0xf0;
-            if (msg_type == 0x80 || msg_type == 0x90) {
-                SRABYTE norm_cmd = 0x90 | (sra->last_sty_msg & 0x0f);
-                SRABYTE vel_eff  = (msg_type == 0x80) ? 0 : e;
-                SRABYTE ch = norm_cmd & 0x0f;
-                if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
-                    ch==ACC5||ch==PHRASE) {
-                    vel_eff = (SRABYTE)(vel_eff * sra->acc_vf * sra->chord_c);
-                    d += sra->chord_v[d % 12];
-                    d += sra->chordd;
-                    if (sra->chordd >= 8) d -= 12;
-                } else if (ch == ACCBASS) {
-                    vel_eff = (SRABYTE)(vel_eff * sra->acc_bass_vf * sra->chord_c);
-                    if (sra->chordd == sra->bass) {
-                        if (d % 12 != 0) d += sra->chord_v[d % 12];
+            {
+                SRABYTE msg_type = sra->last_sty_msg & 0xf0;
+                if (msg_type == 0x80 || msg_type == 0x90) {
+                    SRABYTE norm_cmd = 0x90 | (sra->last_sty_msg & 0x0f);
+                    SRABYTE vel_eff  = (msg_type == 0x80) ? 0 : e;
+                    SRABYTE ch       = norm_cmd & 0x0f;
+                    if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
+                        ch==ACC5||ch==PHRASE) {
+                        vel_eff = (SRABYTE)(vel_eff * sra->acc_vf * sra->chord_c);
+                        d += sra->chord_v[d % 12];
                         d += sra->chordd;
-                        if (sra->chordd >= 4) d -= 12;
+                        if (sra->chordd >= 8) d -= 12;
+                    } else if (ch == ACCBASS) {
+                        vel_eff = (SRABYTE)(vel_eff * sra->acc_bass_vf * sra->chord_c);
+                        if (sra->chordd == sra->bass) {
+                            if (d % 12 != 0) d += sra->chord_v[d % 12];
+                            d += sra->chordd;
+                            if (sra->chordd >= 4) d -= 12;
+                        } else {
+                            d = sra->bass + 24;
+                        }
+                        if (d < 28) d += 12;
+                        if (sra->bass_lock == 0 && vel_eff) {
+                            sra->bass_o = d;
+                            d = sra->bass + 24;
+                            if (d < 28) d += 12;
+                            sra->bass_lock = 1;
+                        } else if (sra->bass_lock == 1 && !vel_eff &&
+                                   d == sra->bass_o) {
+                            d = sra->bass + 24;
+                            if (d < 28) d += 12;
+                            sra->bass_lock = -1;
+                        }
+                    } else if (ch == DRUM) {
+                        vel_eff = (SRABYTE)(vel_eff * sra->drum_vf);
                     } else {
-                        d = sra->bass + 24;
+                        vel_eff = 0;
                     }
-                    if (d < 28) d += 12;
-                } else if (ch == DRUM) {
-                    vel_eff = (SRABYTE)(vel_eff * sra->drum_vf);
-                } else {
-                    vel_eff = 0;
-                }
-                if (ch != DRUM) {
-#ifdef SRA_DEBUG_VOICE
-                    if (ch == 11) {
-                        DBG("%s ch=11 %s note=%d vel=%d vc=%d\n",
-                            __func__,
-                            (msg_type == 0x80) ? "OFF" :
-                            (msg_type == 0x90) ? "ON " : "OTH",
-                            d, vel_eff, sra->voice_count);
+                    if (ch != DRUM) {
+                        if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
+                        else         sra_dec_voice(sra, norm_cmd, d);
                     }
-#endif
-                    if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
-                    else         sra_dec_voice(sra, norm_cmd, d);
+                } else if ((c & 0xb0) == 0xb0) {
+                    if (d == 0)  sra->prog_t[c & 0x0f][0] = e;
+                    else if (d == 32) sra->prog_t[c & 0x0f][1] = e;
                 }
-            } else if ((c & 0xb0) == 0xb0) {
-                if (d == 0)  sra->prog_t[c & 0x0f][0] = e;
-                else if (d == 32) sra->prog_t[c & 0x0f][1] = e;
             }
         } else if ((c & 0xc0) == 0xc0) {
             sra->prog_t[c & 0x0f][2] = d;
             sra_prog_change(sra, c & 0x0f);
         }
 
-        /* Read delta time */
+        /* Read delta */
         c = buf[base + (++sra->sty_index)];
-        i = (c >= 0x80) ? (int)(c - 128) * 128 +
-                          buf[base + (++sra->sty_index)] : (int)c;
-        sra->b_time += (long)i;
+        delta = (c >= 0x80) ? (long)(c - 128) * 128 +
+                              buf[base + (++sra->sty_index)] : (long)c;
+        cur_tick += delta;
 
-        if (sra->key_change) sra->bass_lock = 0;
+        /* Advance to the next measure if we crossed a bar line */
+        while (cur_tick >= (long)(cur_stime + 1) * sra->t_time) {
+            cur_stime++;
+            if (cur_stime > stime) break;
+            base = sra->sty_ptr[kind][sess][cur_stime];
+            sra->sty_index = -1;
+        }
     }
 
-    /* Fix bass voice: redirect to actual bass note */
-    for (i = j = 0; j < sra->voice_count; i++) {
-        if (sra->bass_lock == 0 && (sra->voice[i][0] & 0x0f) == ACCBASS) {
-            sra->bass_o    = sra->voice[i][1];
-            sra->voice[i][1] = sra->bass + 24;
-            if (sra->voice[i][1] < 28) sra->voice[i][1] += 12;
-            sra->bass_lock = 1;
-        }
-        if (sra->voice[i][0] != 0x00) {
-            sra_append(sra, sra->voice[i][0]);
-            sra_append(sra, sra->voice[i][1]);
-            sra_append(sra, sra->voice[i][2]);
-            j++;
+    /* Position sra_dump_sty to continue from the current tick. */
+    sra->b_time = sra->a_time;
+
+    /* Post-processing: fix bass voice (same as in the original code). */
+    {
+        int i, j;
+        for (i = j = 0; j < sra->voice_count; i++) {
+            if (sra->bass_lock == 0 && (sra->voice[i][0] & 0x0f) == ACCBASS) {
+                sra->bass_o      = sra->voice[i][1];
+                sra->voice[i][1] = sra->bass + 24;
+                if (sra->voice[i][1] < 28) sra->voice[i][1] += 12;
+                sra->bass_lock   = 1;
+            }
+            if (sra->voice[i][0] != 0x00) {
+                sra_append(sra, sra->voice[i][0]);
+                sra_append(sra, sra->voice[i][1]);
+                sra_append(sra, sra->voice[i][2]);
+                j++;
+            }
         }
     }
 }
+
 
 /* ------------------------------------------------------------------ */
 /* DumpSty: play all style events at the current tick                   */
@@ -156,9 +163,14 @@ void sra_dump_sty(SraCore *sra) {
 
     while (sra->a_time == sra->b_time) {
         long base = sra->sty_ptr[kind][sess][stime];
+        SRABYTE vel_out = 0;   /* effective velocity for MIDI output */
         c = buf[base + (++sra->sty_index)];
         if (c >= 0x80) {
             if (c == (SRABYTE)0xff) {
+#ifdef SRA_DEBUG_VOICE
+                DBG("dump_sty: 0xff a_time=%ld b_time=%ld sty_index=%ld start_f=%d\n",
+                    sra->a_time, sra->b_time, sra->sty_index, sra->start_f);
+#endif
                 sra->msg = (SRABYTE)(CMD_START + sra->offset);
                 sra_check_com(sra);
                 return;
@@ -220,8 +232,13 @@ void sra_dump_sty(SraCore *sra) {
                                 d, vel_eff, sra->voice_count);
                         }
 #endif
+                        vel_out = vel_eff;   /* remember for MIDI output */
                         if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
                         else         sra_dec_voice(sra, norm_cmd, d);
+                    } else {
+                        /* DRUM: not tracked in voice[], but still needs
+                           vel_out for MIDI output (vel_eff = e * drum_vf). */
+                        vel_out = vel_eff;
                     }
                 }
             }
@@ -230,7 +247,34 @@ void sra_dump_sty(SraCore *sra) {
                 else if (d == 32) sra->prog_t[c & 0x0f][1] = e;
                 else { sra_append(sra, c); sra_append(sra, d); sra_append(sra, e); }
             } else {
-                sra_append(sra, c); sra_append(sra, d); sra_append(sra, e);
+                /* For note events on arranger channels: use vel_out
+                   (which accounts for chord_c and part volume).  Skip
+                   NoteOn entirely if vel_out == 0 — the note would not
+                   sound anyway, and voice[] must not track it. */
+                SRABYTE msg_type_ev = c & 0xf0;
+                SRABYTE ch_ev       = c & 0x0f;
+                int     is_arr_ch   = (ch_ev==ACC1||ch_ev==ACC2||ch_ev==ACC3||
+                                       ch_ev==ACC4||ch_ev==ACC5||ch_ev==PHRASE||
+                                       ch_ev==ACCBASS||ch_ev==DRUM);
+                if ((msg_type_ev == 0x90 || msg_type_ev == 0x80) && is_arr_ch) {
+                    if (msg_type_ev == 0x90) {
+                        if (vel_out != 0) {
+                            sra_append(sra, c);
+                            sra_append(sra, d);
+                            sra_append(sra, vel_out);
+                        }
+                        /* else: silent — skip */
+                    } else {
+                        /* NoteOff: always forward (harmless). */
+                        sra_append(sra, c);
+                        sra_append(sra, d);
+                        sra_append(sra, 0);
+                    }
+                } else {
+                    sra_append(sra, c);
+                    sra_append(sra, d);
+                    sra_append(sra, e);
+                }
             }
         } else {
             if ((c & 0xc0) == 0xc0) {
@@ -269,6 +313,13 @@ void sra_check_com(SraCore *sra) {
         sra->var_f = 1;
         break;
     case CMD_START:
+#ifdef SRA_DEBUG_VOICE
+        DBG("CMD_START: start_f=%d shift_f=%d sync_f=%d ief=%d -> %s\n",
+            sra->start_f, sra->shift_f, sra->sync_f, sra->ief,
+            (!sra->shift_f || sra->start_f)
+                ? (sra->start_f ? "STOP" : "START")
+                : "SYNC_START");
+#endif
         if (!sra->shift_f || sra->start_f) {
             if (sra->start_f) {
                 sra_chord_off(sra);
@@ -288,6 +339,9 @@ void sra_check_com(SraCore *sra) {
             }
             sra->start_f = 1 - sra->start_f;
             sra->sync_f = sra->ief = sra->fill_f = 0;
+#ifdef SRA_DEBUG_VOICE
+            DBG("CMD_START: after -> start_f=%d\n", sra->start_f);
+#endif
         } else {
             sra->sync_f = 1;
             sra_chord_off(sra);

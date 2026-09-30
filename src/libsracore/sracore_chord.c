@@ -203,6 +203,10 @@ void sra_check_key_on(SraCore *sra) {
 
         if (note <= (SRABYTE)(CMD_COMMANDU + sra->offset) &&
                    note >= (SRABYTE)(CMD_COMMANDD + sra->offset)) {
+#ifdef SRA_DEBUG_VOICE
+            DBG("keycmd: note=%d shift=%d start_f=%d -> check_com\n",
+                note, sra->shift_f, sra->start_f);
+#endif
             sra->queue[(sra->que_t - 1 + MAXQUEUE) % MAXQUEUE] = 0x00;
             sra_check_com(sra);
 

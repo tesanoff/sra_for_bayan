@@ -226,7 +226,6 @@ void sra_reset(SraCore *sra, int full) {
 
 void sra_clear_session(SraCore *sra) {
     memset(sra->sty_session_init, 0, sizeof(sra->sty_session_init));
-    memset(sra->sty_session_note, 0, sizeof(sra->sty_session_note));
 }
 
 void sra_make_session_init(SraCore *sra, long ind, int k, int s, int st) {
@@ -238,30 +237,6 @@ void sra_make_session_init(SraCore *sra, long ind, int k, int s, int st) {
         if (cc == 0 || cc == 32)
             sra->sty_session_init[k][s][st][last & 0x0f][cc / 32] =
                 sra->style_buf[ind];
-    }
-}
-
-void sra_make_session_note(SraCore *sra, long ind) {
-    SRABYTE last = sra->last_sty_msg;
-    SRABYTE ch   = last & 0x0f;
-    if ((last & 0x90) == 0x90 && (ch == ACC3 || ch == ACC4)) {
-        if (sra->style_buf[ind] != 0x00)
-            sra_inc_voice(sra, last, sra->style_buf[ind - 1],
-                          sra->style_buf[ind]);
-        else
-            sra_dec_voice(sra, last, sra->style_buf[ind - 1]);
-    }
-}
-
-void sra_save_session_note(SraCore *sra, int k, int s, int st) {
-    int i, j;
-    for (i = 0, j = 0; i < MAXVOICE && j < (MAXVOICE - 1); i++) {
-        if (sra->voice[i][0] != 0x00) {
-            sra->sty_session_note[k][s][st][j][0] = sra->voice[i][0];
-            sra->sty_session_note[k][s][st][j][1] = sra->voice[i][1];
-            sra->sty_session_note[k][s][st][j][2] = sra->voice[i][2];
-            j++;
-        }
     }
 }
 
@@ -450,7 +425,6 @@ int sra_load_style(SraCore *sra, int style_num) {
         if (index_n > (STYLESIZE - 10)) {
             fclose(f); sra_do_error(sra, 7); return 0;
         }
-        sra_make_session_note(sra, index_n);
         sra_make_session_init(sra, index_n, kind, session, session_time);
 
         delta = (SRABYTE)fgetc(f);
@@ -471,7 +445,6 @@ int sra_load_style(SraCore *sra, int style_num) {
         if (sra->a_time > sra->t_time) { fclose(f); sra_do_error(sra, 5); return 0; }
 
         if (sra->a_time == sra->t_time) {
-            sra_save_session_note(sra, kind, session, session_time);
             sra->a_time = 0;
 
             if (session == 0) {

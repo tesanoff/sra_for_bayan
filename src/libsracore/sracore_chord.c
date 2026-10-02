@@ -82,6 +82,9 @@ void sra_chord_off(SraCore *sra) {
         sra_append(sra, 0x90 | LOWER);
         sra_append(sra, sra->key_off[i]);
         sra_append(sra, 0x00);
+#ifdef SRA_DEBUG_VOICE
+        DBG("chord_off LOWER OFF note=%d\n", sra->key_off[i]);
+#endif
     }
     sra->key_off_count = -1;
 
@@ -96,6 +99,16 @@ void sra_chord_off(SraCore *sra) {
     }
 }
 
+/* Return index of (cmd, orig) in voice[], or -1 if not active. */
+int sra_voice_find(SraCore *sra, SRABYTE cmd, SRABYTE orig) {
+    int i;
+    for (i = 0; i < MAXVOICE; i++) {
+        if (sra->voice[i][0] == cmd && sra->voice[i][1] == orig)
+            return i;
+    }
+    return -1;
+}
+
 void sra_chord_on(SraCore *sra) {
     int i;
     if (!sra->start_f && sra->mode && !sra->sync_f) {
@@ -104,11 +117,19 @@ void sra_chord_on(SraCore *sra) {
         sra_append(sra, sra->key_on[0][1] * sra->mbass_vf);
     }
     for (i = 0; i < sra->key_on_count; i++) {
+        SRABYTE lvel;
         sra->key_off[++sra->key_off_count] =
             sra->key_on[i][0] + 12 + sra->offset2 - sra->offset3;
-        sra_append(sra, 0x90 | LOWER);
-        sra_append(sra, sra->key_off[sra->key_off_count]);
-        sra_append(sra, sra->key_on[i][1] * sra->mode * sra->lower_vf);
+        lvel = (SRABYTE)(sra->key_on[i][1] * sra->mode * sra->lower_vf);
+        if (lvel > 0) {
+            sra_append(sra, 0x90 | LOWER);
+            sra_append(sra, sra->key_off[sra->key_off_count]);
+            sra_append(sra, lvel);
+#ifdef SRA_DEBUG_VOICE
+            DBG("chord_on LOWER ON  note=%d vel=%d\n",
+                sra->key_off[sra->key_off_count], lvel);
+#endif
+        }
     }
     sra->chord_c = 1;
 }

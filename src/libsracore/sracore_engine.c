@@ -12,7 +12,7 @@
 /* ------------------------------------------------------------------ */
 
 void sra_count_note(SraCore *sra) {
-    SRABYTE c, d, e;
+    SRABYTE c, d, e = 0;
     SRABYTE *buf  = sra->style_buf;
     int      kind = (int)sra->chord_k;
     int      sess = (int)sra->session;
@@ -20,6 +20,12 @@ void sra_count_note(SraCore *sra) {
     long     base;
     long     cur_tick, target;
     int      cur_stime;
+#ifdef SRA_TRACE_MROLL
+    long    _last_ev_tick = -1;
+    SRABYTE _last_ev_cmd = 0, _last_ev_note = 0, _last_ev_vel = 0;
+    long    _last_ev_sty_index = -1;
+    long    _last_ev_abs = -1;
+#endif
 
     DBG("count_note: kind=%d sess=%d stime=%d a_time=%ld (mroll section)\n",
         kind, sess, stime, sra->a_time);
@@ -64,6 +70,7 @@ void sra_count_note(SraCore *sra) {
                     SRABYTE norm_cmd = 0x90 | (sra->last_sty_msg & 0x0f);
                     SRABYTE vel_eff  = (msg_type == 0x80) ? 0 : e;
                     SRABYTE ch       = norm_cmd & 0x0f;
+                    SRABYTE d_orig = d;   /* исходная нота из стиля, ДО транспозиции */
                     if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
                         ch==ACC5||ch==PHRASE) {
                         vel_eff = (SRABYTE)(vel_eff * sra->acc_vf * sra->chord_c);
@@ -97,8 +104,8 @@ void sra_count_note(SraCore *sra) {
                         vel_eff = 0;
                     }
                     if (ch != DRUM) {
-                        if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
-                        else         sra_dec_voice(sra, norm_cmd, d);
+                        if (vel_eff) sra_inc_voice(sra, norm_cmd, d_orig, d, vel_eff);
+                        else         sra_dec_voice(sra, norm_cmd, d_orig);
                     }
                 } else if ((c & 0xb0) == 0xb0) {
                     if (d == 0)  sra->prog_t[c & 0x0f][0] = e;
@@ -123,7 +130,38 @@ void sra_count_note(SraCore *sra) {
             base = sra->sty_ptr[kind][sess][cur_stime];
             sra->sty_index = -1;
         }
+#ifdef SRA_TRACE_MROLL
+        _last_ev_tick       = cur_tick;
+        _last_ev_cmd        = sra->last_sty_msg;
+        _last_ev_note       = d;
+        _last_ev_vel        = e;
+        _last_ev_sty_index  = sra->sty_index;
+        _last_ev_abs        = base + sra->sty_index;
+#endif
     }
+
+#ifdef SRA_TRACE_MROLL
+    {
+        long _abs = base + sra->sty_index;
+        int  _warn = (sra->sty_index > 0 &&
+                      _abs > 0 &&
+                      ((buf[_abs] & 0x80) == 0) &&
+                      ((buf[_abs-1] & 0x80) == 0));
+        fprintf(stderr,
+            "TRC CNE %d %d %d %ld %02X %d %d %ld %ld\n",
+            kind, sess, stime,
+            _last_ev_tick, _last_ev_cmd, _last_ev_note, _last_ev_vel,
+            _last_ev_sty_index, _last_ev_abs);
+        fprintf(stderr,
+            "TRC CNK %d %d %d %ld %ld %ld %ld %ld %ld %02X %02X %02X %ld %d\n",
+            kind, sess, stime,
+            sra->a_time, sra->b_time, target, cur_tick, sra->sty_index, _abs,
+            buf[_abs], buf[_abs+1], buf[_abs+2],
+            sra->sty_ptr[kind][sess][stime],
+            _warn);
+    }
+    sra->trace_next_dump = 1;
+#endif
 
     /* Position sra_dump_sty to continue from the current tick. */
     sra->b_time = sra->a_time;
@@ -133,15 +171,15 @@ void sra_count_note(SraCore *sra) {
         int i, j;
         for (i = j = 0; j < sra->voice_count; i++) {
             if (sra->bass_lock == 0 && (sra->voice[i][0] & 0x0f) == ACCBASS) {
-                sra->bass_o      = sra->voice[i][1];
-                sra->voice[i][1] = sra->bass + 24;
-                if (sra->voice[i][1] < 28) sra->voice[i][1] += 12;
-                sra->bass_lock   = 1;
+                sra->bass_o        = sra->voice[i][2];
+                sra->voice[i][2]   = sra->bass + 24;
+                if (sra->voice[i][2] < 28) sra->voice[i][2] += 12;
+                sra->bass_lock     = 1;
             }
             if (sra->voice[i][0] != 0x00) {
                 sra_append(sra, sra->voice[i][0]);
-                sra_append(sra, sra->voice[i][1]);
-                sra_append(sra, sra->voice[i][2]);
+                sra_append(sra, sra->voice[i][2]);   /* trans_note */
+                sra_append(sra, sra->voice[i][3]);   /* vel */
                 j++;
             }
         }
@@ -161,9 +199,30 @@ void sra_dump_sty(SraCore *sra) {
     int      stime= (int)sra->session_time;
     int      i;
 
+#ifdef SRA_TRACE_MROLL
+    if (sra->trace_next_dump) {
+        long _abs = sra->sty_ptr[kind][sess][stime] + sra->sty_index;
+        fprintf(stderr,
+            "TRC DSY %d %d %d %ld %ld %ld %ld %02X %02X %02X %ld\n",
+            kind, sess, stime,
+            sra->a_time, sra->b_time, sra->sty_index, _abs,
+            buf[_abs], buf[_abs+1], buf[_abs+2],
+            sra->sty_ptr[kind][sess][stime]);
+        sra->trace_next_dump = 0;
+    }
+#endif
+
     while (sra->a_time == sra->b_time) {
         long base = sra->sty_ptr[kind][sess][stime];
         SRABYTE vel_out = 0;   /* effective velocity for MIDI output */
+#ifdef SRA_DEBUG_VOICE
+        if (sra->sty_index == -1) {
+            DBG("dump_sty RESUME: kind=%d sess=%d stime=%d a=%ld b=%ld "
+                "base=%ld last=%02X\n",
+                kind, sess, stime, sra->a_time, sra->b_time,
+                base, sra->last_sty_msg);
+        }
+#endif
         c = buf[base + (++sra->sty_index)];
         if (c >= 0x80) {
             if (c == (SRABYTE)0xff) {
@@ -193,6 +252,7 @@ void sra_dump_sty(SraCore *sra) {
                     SRABYTE norm_cmd = 0x90 | (sra->last_sty_msg & 0x0f);
                     SRABYTE vel_eff  = (msg_type == 0x80) ? 0 : e;
                     SRABYTE ch = norm_cmd & 0x0f;
+                    SRABYTE d_orig = d;   /* исходная нота из стиля, ДО транспозиции */
                     if (ch==ACC1||ch==ACC2||ch==ACC3||ch==ACC4||
                         ch==ACC5||ch==PHRASE) {
                         vel_eff  = (SRABYTE)(vel_eff * sra->acc_vf * sra->chord_c);
@@ -224,17 +284,32 @@ void sra_dump_sty(SraCore *sra) {
                     }
                     if (ch != DRUM) {
 #ifdef SRA_DEBUG_VOICE
-                        if (ch == 11) {
-                            DBG("%s ch=11 %s note=%d vel=%d vc=%d\n",
-                                __func__,
+                        if (ch == 10) {
+                            DBG("%s ch=%d %s orig=%d trans=%d vel=%d vc=%d "
+                                "a=%ld b=%ld stime=%d sess=%ld "
+                                "last=%02X si=%ld\n",
+                                __func__, ch,
                                 (msg_type == 0x80) ? "OFF" :
                                 (msg_type == 0x90) ? "ON " : "OTH",
-                                d, vel_eff, sra->voice_count);
+                                d_orig, d, vel_eff, sra->voice_count,
+                                sra->a_time, sra->b_time,
+                                stime, sra->session,
+                                sra->last_sty_msg, sra->sty_index);
                         }
 #endif
                         vel_out = vel_eff;   /* remember for MIDI output */
-                        if (vel_eff) sra_inc_voice(sra, norm_cmd, d, vel_eff);
-                        else         sra_dec_voice(sra, norm_cmd, d);
+                        if (vel_eff) {
+                            int idx = sra_voice_find(sra, norm_cmd, d_orig);
+                            if (idx >= 0) {
+                                sra->voice[idx][2] = d;
+                                sra->voice[idx][3] = vel_eff;
+                                vel_out = 0;   /* suppress MIDI NoteOn */
+                            } else {
+                                sra_inc_voice(sra, norm_cmd, d_orig, d, vel_eff);
+                            }
+                        } else {
+                            sra_dec_voice(sra, norm_cmd, d_orig);
+                        }
                     } else {
                         /* DRUM: not tracked in voice[], but still needs
                            vel_out for MIDI output (vel_eff = e * drum_vf). */
@@ -257,15 +332,16 @@ void sra_dump_sty(SraCore *sra) {
                                        ch_ev==ACC4||ch_ev==ACC5||ch_ev==PHRASE||
                                        ch_ev==ACCBASS||ch_ev==DRUM);
                 if ((msg_type_ev == 0x90 || msg_type_ev == 0x80) && is_arr_ch) {
-                    if (msg_type_ev == 0x90) {
-                        if (vel_out != 0) {
-                            sra_append(sra, c);
-                            sra_append(sra, d);
-                            sra_append(sra, vel_out);
-                        }
-                        /* else: silent — skip */
+                    if (msg_type_ev == 0x90 && vel_out != 0) {
+                        /* NoteOn with real velocity: forward. */
+                        sra_append(sra, c);
+                        sra_append(sra, d);
+                        sra_append(sra, vel_out);
                     } else {
-                        /* NoteOff: always forward (harmless). */
+                        /* NoteOff, either as 0x80 or as 0x90 with vel 0:
+                           always forward.  (Earlier code skipped the
+                           0x90-vel-0 case, which left every style NoteOff
+                           stuck on the synth.) */
                         sra_append(sra, c);
                         sra_append(sra, d);
                         sra_append(sra, 0);
@@ -397,6 +473,34 @@ static void emit_volume_all(SraCore *sra, SRABYTE vol) {
 
 void sra_step(SraCore *sra) {
     if (sra->que_lock) return;
+
+#ifdef SRA_TRACE_HEARTBEAT
+    {
+        static unsigned long _hb = 0;
+        if ((_hb++ & 0x3FF) == 0) {
+            HB("step=%lu now=%ld wait=%ld wait2=%ld clock=%ld "
+               "a=%ld b=%ld si=%ld sess=%ld stime=%ld vc=%d start=%d lock=%d\n",
+               _hb, sra->now_usec, sra->wait, sra->wait2, sra->clock,
+               sra->a_time, sra->b_time, sra->sty_index,
+               sra->session, sra->session_time, sra->voice_count,
+               sra->start_f, sra->que_lock);
+        }
+    }
+#endif
+
+#ifdef SRA_TRACE_HEARTBEAT
+    {
+        static unsigned long _hb = 0;
+        if ((_hb++ & 0x3FF) == 0) {
+            HB("step=%lu now=%ld wait=%ld wait2=%ld clock=%ld "
+               "a=%ld b=%ld si=%ld sess=%ld stime=%ld vc=%d start=%d lock=%d\n",
+               _hb, sra->now_usec, sra->wait, sra->wait2, sra->clock,
+               sra->a_time, sra->b_time, sra->sty_index,
+               sra->session, sra->session_time, sra->voice_count,
+               sra->start_f, sra->que_lock);
+        }
+    }
+#endif
 
     /* Advance chord debounce timer and, if it has expired, try to
        recognise the chord.  chord_change is set by sra_check_chord()

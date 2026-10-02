@@ -236,6 +236,17 @@ int sracore_drain_output(SraCore *sra, SRABYTE buf[3]) {
     case 0x80: case 0x90: case 0xa0: case 0xb0: case 0xe0:
         buf[0] = status; buf[1] = d1; buf[2] = d2;
 #ifdef SRA_DEBUG_VOICE
+        if (msg2 == 0x90 || msg2 == 0x80) {
+            SRABYTE outch = status & 0x0f;
+            if (outch == 10 || outch == 14) {
+                DBG("OUT ch=%d %s note=%d vel=%d\n",
+                    outch,
+                    (msg2 == 0x80) ? "OFF" : (d2 ? "ON " : "OFF"),
+                    d1, d2);
+            }
+        }
+#endif
+#ifdef SRA_DEBUG_VOICE
         if (msg2 == 0x90) {
             SRABYTE outch = status & 0x0f;
             if (d2 > 0) sra->out_noteon[outch]++;

@@ -13,9 +13,38 @@
 
 /* ---- Debug output (enabled with -DSRA_DEBUG_VOICE) ---- */
 #ifdef SRA_DEBUG_VOICE
-#  define DBG(...) fprintf(stderr, "[DBG] " __VA_ARGS__)
+#  include <time.h>
+static inline long sra_dbg_usec(void) {
+    struct timespec _ts;
+    clock_gettime(CLOCK_MONOTONIC, &_ts);
+    return (long)((_ts.tv_sec % 100000L) * 1000000L + _ts.tv_nsec / 1000L);
+}
+#  define DBG(fmt, ...) \
+       fprintf(stderr, "[%ld] " fmt, sra_dbg_usec(), ##__VA_ARGS__)
 #else
 #  define DBG(...) ((void)0)
+#endif
+
+/* ---- Trace for sra_count_note / sra_dump_sty ---- */
+/* Раскомментируйте следующую строку, чтобы включить трассировку. */
+//#define SRA_TRACE_MROLL 1
+
+#ifdef SRA_TRACE_MROLL
+#  define TRC(fmt, ...) \
+       fprintf(stderr, "[%ld] TRC " fmt, sra_dbg_usec(), ##__VA_ARGS__)
+#else
+#  define TRC(...) ((void)0)
+#endif
+
+/* ---- Heartbeat trace in sra_step ---- */
+/* Раскомментируйте, чтобы включить heartbeat. */
+//#define SRA_TRACE_HEARTBEAT 1
+
+#ifdef SRA_TRACE_HEARTBEAT
+#  define HB(fmt, ...) \
+       fprintf(stderr, "[%ld] HB " fmt, sra_dbg_usec(), ##__VA_ARGS__)
+#else
+#  define HB(...) ((void)0)
 #endif
 
 /* ------------------------------------------------------------------ */
@@ -117,7 +146,8 @@ struct SraCore {
     int     que_lock;
 
     /* Active polyphonic voices */
-    SRABYTE voice[MAXVOICE][3]; /* [slot][0=status, 1=note, 2=velocity] */
+    /* [slot][0=cmd, 1=orig_note (до трансп.), 2=trans_note (для MIDI), 3=vel] */
+    SRABYTE voice[MAXVOICE][4];
     int     voice_lock;
     int     voice_count;
 
@@ -194,6 +224,9 @@ struct SraCore {
     long    sty_ptr[3][6][SESSION_MAX];
     long    sty_index;      /* current read offset into style_buf */
     SRABYTE *style_buf;     /* malloc'd STYLESIZE bytes */
+#ifdef SRA_TRACE_MROLL
+    int     trace_next_dump;/* 1 = next sra_dump_sty should print DSY */
+#endif
 
     /* Callbacks */
     SraCallbacks cb;
@@ -214,6 +247,7 @@ int  sra_is_arranger_channel(SRABYTE ch);
 /* sracore_chord.c */
 void sra_chord_off(SraCore *sra);
 void sra_chord_on(SraCore *sra);
+int  sra_voice_find(SraCore *sra, SRABYTE cmd, SRABYTE orig);
 void sra_set_chord(SraCore *sra, SRABYTE root, ChordTypeId type);
 void sra_check_key_on(SraCore *sra);
 void sra_check_key_off(SraCore *sra);
@@ -229,9 +263,11 @@ int  sra_load_style(SraCore *sra, int style_num);
 int  parse_style_header(FILE *f, SraCore *sra);
 void sra_make_session_init(SraCore *sra, long ind, int k, int s, int st);
 void sra_move_com(SraCore *sra, long a, long b);
-void sra_inc_voice(SraCore *sra, SRABYTE cmd, SRABYTE note, SRABYTE vel);
-void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE note);
+void sra_inc_voice(SraCore *sra, SRABYTE cmd, SRABYTE orig, SRABYTE trans,
+                   SRABYTE vel);
+void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE orig);
 void sra_all_note_off(SraCore *sra);
+void sra_clear_voices_on_loop(SraCore *sra);
 void sra_lower_on(SraCore *sra);
 void sra_lower_off(SraCore *sra);
 void sra_prog_change(SraCore *sra, SRABYTE ch);

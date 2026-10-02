@@ -16,55 +16,58 @@ void sra_set_clock(SraCore *sra) {
 /* Voice management                                                     */
 /* ------------------------------------------------------------------ */
 
-void sra_inc_voice(SraCore *sra, SRABYTE cmd, SRABYTE note, SRABYTE vel) {
+void sra_inc_voice(SraCore *sra, SRABYTE cmd, SRABYTE orig, SRABYTE trans,
+                   SRABYTE vel) {
     int i;
-    /* Idempotence: if (cmd, note) is already active, update velocity.
-       This prevents duplicate entries in voice[] when the style has
-       repeated NoteOn for the same note without intermediate NoteOff. */
+    /* Идемпотентность: если (cmd, orig) уже активен, обновить trans + vel.
+       Это предотвращает дубликаты в voice[] при повторных NoteOn
+       для одной ноты без промежуточного NoteOff. */
     for (i = 0; i < MAXVOICE; i++) {
-        if (sra->voice[i][0] == cmd && sra->voice[i][1] == note) {
-            sra->voice[i][2] = vel;
-            DBG("inc(dup) ch=%d note=%d vel=%d -> vc=%d\n",
-                cmd & 0x0f, note, vel, sra->voice_count);
+        if (sra->voice[i][0] == cmd && sra->voice[i][1] == orig) {
+            sra->voice[i][2] = trans;
+            sra->voice[i][3] = vel;
+            DBG("inc(dup) ch=%d orig=%d trans=%d vel=%d -> vc=%d\n",
+                cmd & 0x0f, orig, trans, vel, sra->voice_count);
             return;
         }
     }
     for (i = 0; i < MAXVOICE; i++) {
         if (sra->voice[i][0] == 0x00) {
             sra->voice[i][0] = cmd;
-            sra->voice[i][1] = note;
-            sra->voice[i][2] = vel;
+            sra->voice[i][1] = orig;
+            sra->voice[i][2] = trans;
+            sra->voice[i][3] = vel;
             sra->voice_count++;
-            DBG("inc ch=%d note=%d vel=%d -> vc=%d\n",
-                cmd & 0x0f, note, vel, sra->voice_count);
+            DBG("inc ch=%d orig=%d trans=%d vel=%d -> vc=%d\n",
+                cmd & 0x0f, orig, trans, vel, sra->voice_count);
             return;
         }
     }
-    DBG("inc FULL ch=%d note=%d vel=%d (vc=%d)\n",
-        cmd & 0x0f, note, vel, sra->voice_count);
+    DBG("inc FULL ch=%d orig=%d trans=%d vel=%d (vc=%d)\n",
+        cmd & 0x0f, orig, trans, vel, sra->voice_count);
 }
 
-void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE note) {
+void sra_dec_voice(SraCore *sra, SRABYTE cmd, SRABYTE orig) {
     int i;
     for (i = 0; i < MAXVOICE; i++) {
-        if (sra->voice[i][0] == cmd && sra->voice[i][1] == note) {
+        if (sra->voice[i][0] == cmd && sra->voice[i][1] == orig) {
             sra->voice[i][0] = 0x00;
             sra->voice_count--;
-            DBG("dec ch=%d note=%d -> vc=%d\n",
-                cmd & 0x0f, note, sra->voice_count);
+            DBG("dec ch=%d orig=%d (trans=%d) -> vc=%d\n",
+                cmd & 0x0f, orig, sra->voice[i][2], sra->voice_count);
             return;
         }
     }
-    DBG("dec NOT FOUND ch=%d note=%d (vc=%d)\n",
-        cmd & 0x0f, note, sra->voice_count);
+    DBG("dec NOT FOUND ch=%d orig=%d (vc=%d)\n",
+        cmd & 0x0f, orig, sra->voice_count);
 #ifdef SRA_DEBUG_VOICE
-    /* Detail dump for Acc1 (ch=8): show all active voices on this channel */
     if ((cmd & 0x0f) == 8) {
         DBG("  -- active voices on ch=8 --\n");
         for (i = 0; i < MAXVOICE; i++) {
             if (sra->voice[i][0] == cmd) {
-                DBG("    voice[%d] ch=%d note=%d vel=%d\n",
-                    i, cmd & 0x0f, sra->voice[i][1], sra->voice[i][2]);
+                DBG("    voice[%d] ch=%d orig=%d trans=%d vel=%d\n",
+                    i, cmd & 0x0f, sra->voice[i][1],
+                    sra->voice[i][2], sra->voice[i][3]);
             }
         }
     }
@@ -76,14 +79,23 @@ void sra_all_note_off(SraCore *sra) {
 #ifdef SRA_DEBUG_VOICE
     int _before = sra->voice_count;
     DBG("all_note_off: before=%d\n", _before);
+    {
+        int _k;
+        for (_k = 0; _k < MAXVOICE; _k++) {
+            if (sra->voice[_k][0] != 0x00)
+                DBG("  voice[%d] cmd=%02x note=%d vel=%d\n",
+                    _k, sra->voice[_k][0], sra->voice[_k][1],
+                    sra->voice[_k][2]);
+        }
+    }
 #endif
     for (i = 0; sra->voice_count; i++) {
         if (sra->voice[i][0] != 0x00) {
-            DBG("  off ch=%d note=%d vel=%d\n",
+            DBG("  off ch=%d orig=%d trans=%d vel=%d\n",
                 sra->voice[i][0] & 0x0f,
-                sra->voice[i][1], sra->voice[i][2]);
+                sra->voice[i][1], sra->voice[i][2], sra->voice[i][3]);
             sra_append(sra, sra->voice[i][0]);
-            sra_append(sra, sra->voice[i][1]);
+            sra_append(sra, sra->voice[i][2]);   /* NoteOff по trans_note */
             sra_append(sra, 0x00);
             sra->voice[i][0] = 0x00;
             sra->voice_count--;
@@ -474,6 +486,97 @@ int sra_load_style(SraCore *sra, int style_num) {
     }
     sra->style_buf[++index_n] = 0xff;
     fclose(f);
+
+#ifdef SRA_DEBUG_VOICE
+    {
+        int kk;
+        long ptr;
+        DBG("=== SRA style loaded ===\n");
+        DBG("buf=%ld t_time=%ld il=%d ml_a=%d ml_b=%d el=%d\n",
+            index_n + 1, sra->t_time,
+            (int)sra->il, (int)sra->ml_a, (int)sra->ml_b, (int)sra->el);
+
+        /* sty_ptr[0][0][*] — Intro major */
+        DBG("sty_ptr[0][0][0..4]:");
+        for (kk = 0; kk < 5; kk++) DBG(" %ld", sra->sty_ptr[0][0][kk]);
+        DBG("\n");
+
+        /* sty_ptr[0][1][*] — Original major */
+        DBG("sty_ptr[0][1][0..4]:");
+        for (kk = 0; kk < 5; kk++) DBG(" %ld", sra->sty_ptr[0][1][kk]);
+        DBG("\n");
+
+        /* sty_ptr[0][2][*] — Fill-to-Var major */
+        DBG("sty_ptr[0][2][0] = %ld\n", sra->sty_ptr[0][2][0]);
+
+        /* sty_ptr[0][3][*] — Variation major */
+        DBG("sty_ptr[0][3][0..8]:");
+        for (kk = 0; kk < 9; kk++) DBG(" %ld", sra->sty_ptr[0][3][kk]);
+        DBG("\n");
+
+        /* sty_ptr[0][4][0] — Fill-to-Orig major */
+        DBG("sty_ptr[0][4][0] = %ld\n", sra->sty_ptr[0][4][0]);
+
+        /* sty_ptr[0][5][0] — Ending major */
+        DBG("sty_ptr[0][5][0] = %ld\n", sra->sty_ptr[0][5][0]);
+
+        /* sty_ptr[1][1][*] — Original minor */
+        DBG("sty_ptr[1][1][0..4]:");
+        for (kk = 0; kk < 5; kk++) DBG(" %ld", sra->sty_ptr[1][1][kk]);
+        DBG("\n");
+
+        /* sty_ptr[2][1][*] — Original other */
+        DBG("sty_ptr[2][1][0..4]:");
+        for (kk = 0; kk < 5; kk++) DBG(" %ld", sra->sty_ptr[2][1][kk]);
+        DBG("\n");
+
+        /* Hex-дампы style_buf на ключевых позициях */
+        DBG("--- hex dump (first 24 bytes from each sty_ptr) ---\n");
+
+        ptr = sra->sty_ptr[0][0][0];
+        DBG("sty_ptr[0][0][0]=%ld (Intro major start): ", ptr);
+        for (kk = 0; kk < 24; kk++) DBG(" %02x", sra->style_buf[ptr + kk]);
+        DBG("\n");
+
+        ptr = sra->sty_ptr[0][1][0];
+        DBG("sty_ptr[0][1][0]=%ld (Original major bar 0): ", ptr);
+        for (kk = 0; kk < 24; kk++) DBG(" %02x", sra->style_buf[ptr + kk]);
+        DBG("\n");
+
+        ptr = sra->sty_ptr[0][1][3];
+        DBG("sty_ptr[0][1][3]=%ld (Original major bar 3): ", ptr);
+        for (kk = 0; kk < 24; kk++) DBG(" %02x", sra->style_buf[ptr + kk]);
+        DBG("\n");
+
+        /* Конец Original bar 3: sty_ptr[0][2][0] (Fill) */
+        ptr = sra->sty_ptr[0][2][0];
+        DBG("sty_ptr[0][2][0]=%ld (Fill-to-Var major): ", ptr);
+        for (kk = 0; kk < 24; kk++) DBG(" %02x", sra->style_buf[ptr + kk]);
+        DBG("\n");
+
+        ptr = sra->sty_ptr[0][4][0];
+        DBG("sty_ptr[0][4][0]=%ld (Fill-to-Orig major): ", ptr);
+        for (kk = 0; kk < 24; kk++) DBG(" %02x", sra->style_buf[ptr + kk]);
+        DBG("\n");
+
+        /* Байты между концом Original bar 3 и началом Fill */
+        {
+            long a = sra->sty_ptr[0][1][3];
+            long b = sra->sty_ptr[0][2][0];
+            DBG("--- gap between Original[3] and Fill: %ld bytes ---\n", b - a);
+            DBG("gap content (last 24 bytes before Fill): ");
+            for (kk = -24; kk < 0; kk++)
+                DBG(" %02x", sra->style_buf[b + kk]);
+            DBG("\n");
+        }
+    }
+#endif
+
+#ifdef SRA_TRACE_MROLL
+    fprintf(stderr,
+        "TRC TRACE-HEADER kind sess stime a_time b_time target cur_tick "
+        "sty_index abs b0 b1 b2 sty_ptr\n");
+#endif
 
     for (i = 0; i < MAXVOICE; i++) sra->voice[i][0] = 0x00;
     sra->voice_count = 0;

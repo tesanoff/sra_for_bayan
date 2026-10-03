@@ -322,6 +322,7 @@ F0 7D <CMD> [<DATA...>] F7
 | `51` | Set chord channel | channel, **0-based** (0–15) |
 | `52` | Master Volume | volume (0–127) |
 | `53` | Toggle Lower | — |
+| `54` | Reset | — |
 
 > **Full command reference:** see [SYSEX.md](SYSEX.md) for a
 > detailed description of every command — behaviour, timing, side

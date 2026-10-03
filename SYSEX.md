@@ -159,6 +159,7 @@ Channels **0–5** (UI 1–6) are free for live playing.
 | `51` | Set chord channel | channel, 0-based (0–15) |
 | `52` | Master Volume | volume (0–127) |
 | `53` | Toggle Lower | — |
+| `54` | Reset | — |
 
 Commands are described in detail below, grouped by function.
 
@@ -452,7 +453,59 @@ Data: 1 byte, 0–127.
 
 ---
 
-## 9. Mode and routing
+## 9. Reset
+
+### `54` — Reset
+
+Brings SRA back to its **post-start default state** — without
+reloading the style.  No data bytes.
+
+```
+F0 7D 54 F7
+```
+
+What Reset does, in order:
+
+1. **Stops playback cleanly** if the style is running: sends All
+   Sound Off and Note Off on all arranger-owned channels (no
+   hanging notes), restores the LOWER part's Expression, and
+   clears the key-tracking state.
+2. **Clears the voice table** (`voice[]`, `voice_count`,
+   `bass_lock`).
+3. **Resets all transport flags:** `mode`, `var_f`, `sync_f`,
+   `fill_f`, `ief`, `ief2`, `shift_f`, `func`, `fadeout_f`.
+4. **Resets position** to the beginning of Original
+   (`session = 1`, `session_time = 0`, `a_time = b_time = 0`,
+   `sty_index = -1`).
+5. **Resets chord state:** chord root, kind, voicing,
+   `chord_c = 0`, chord name cleared.
+6. **Resets key tracking:** `key_on_count = 0`,
+   `key_off_count = -1`, `key_on[]` / `key_off[]` cleared.
+7. **Resets all toggles to their default (on):** `mbass_vf`,
+   `acc_vf`, `acc_bass_vf`, `drum_vf`, `lower_vf`,
+   `note_cmd_enabled`.
+8. **Restores tempo** to the value read from the style file.
+9. **Invalidates the program-change cache**, so patches are
+   re-sent on the next use.
+10. **Sends the standard init messages** (CC11, CC91, CC7,
+    pitch-wheel centre, default patches on LOWER and MBASS) via
+    `sra_reset(0)`.
+11. **Notifies the UI** (`on_chord` / `on_tempo`).
+
+Non-state settings are intentionally **not** touched:
+`chord_ch`, `master_vol`, `offset` / `offset2` / `offset3` /
+`offset4`, `styles_dir`, `style_name`, and the loaded style data
+(`style_buf`, `sty_ptr`, `sty_session_init`).
+
+**Errors:**
+- `CMD 0x54 Reset: unexpected data byte 0xXX (expected none)` —
+  Reset was sent with a data byte.
+
+**Example:** `F0 7D 54 F7`
+
+---
+
+## 10. Mode and routing
 
 ### `0E` — Change Mode
 
@@ -538,7 +591,7 @@ Data: 1 byte, 0–15.
 
 ---
 
-## 10. Styles
+## 11. Styles
 
 ### `20` — Load Style
 
@@ -567,7 +620,7 @@ Data: 1 byte, 0–127.
 
 ---
 
-## 11. Error handling
+## 12. Error handling
 
 ### Message errors
 
@@ -603,6 +656,7 @@ the exact problem — including the offending byte, if any.
 | `CMD 0x0F To Original: unexpected data byte 0xXX (expected none)` | To Original with unexpected data |
 | `CMD 0x10 To Variation: unexpected data byte 0xXX (expected none)` | To Variation with unexpected data |
 | `CMD 0x53 Toggle Lower: unexpected data byte 0xXX (expected none)` | Toggle Lower with unexpected data |
+| `CMD 0x54 Reset: unexpected data byte 0xXX (expected none)` | Reset with unexpected data |
 | `CMD 0x20 Load Style: missing data byte (expected 1, got 0)` | Load Style without a style number |
 | `CMD 0x20 Load Style: data 0xXX out of range (0x00..0x7F)` | Style number > 127 |
 | `CMD 0x50 Enable/disable Note-On: missing data byte (expected 1, got 0)` | Note-On enable without a value |
@@ -615,7 +669,7 @@ the exact problem — including the offending byte, if any.
 > **Note.**  The exact data byte is shown as `0xXX` in the table;
 > the engine prints the actual value (e.g. `0x01`, `0xFF`).
 
-### 11.1 Debug logging
+### 12.1 Debug logging
 
 Pass `--debug` on the command line to log every SysEx message
 that SRA receives with its own Manufacturer ID (`0x7D`).  Each
@@ -663,7 +717,7 @@ limit is enforced by the platform layer, not by the dispatcher.
 
 ---
 
-## 12. Examples
+## 13. Examples
 
 ### Basic transport
 
@@ -684,6 +738,13 @@ Sync Start — wait for the first chord:
 ```
 F0 7D 03 F7
 ```
+
+Reset to post-start defaults:
+
+```
+F0 7D 54 F7
+```
+
 
 ### Section switching
 
@@ -805,6 +866,7 @@ deprecated Note-On control.
 | `51` Set chord channel | — | SysEx only. |
 | `52` Master Volume | — | SysEx only. |
 | `53` Toggle Lower | — | SysEx only. |
+| `54` Reset | — | SysEx only. |
 
 Note-On commands can be disabled with `50 00`, but SysEx commands
 always work.

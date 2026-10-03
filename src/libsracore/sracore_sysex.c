@@ -36,6 +36,7 @@
 #define SX_NOTE_CMD_ENABLE  0x50
 #define SX_SET_CHORD_CH     0x51
 #define SX_MASTER_VOLUME    0x52
+#define SX_RESET            0x54
 
 /* ------------------------------------------------------------------ */
 /* Command name table                                                   */
@@ -65,6 +66,7 @@ static const char *sysex_cmd_name(SRABYTE cmd) {
     case SX_NOTE_CMD_ENABLE: return "Enable/disable Note-On";
     case SX_SET_CHORD_CH:    return "Set Chord Ch";
     case SX_MASTER_VOLUME:   return "Master Volume";
+    case SX_RESET:           return "Reset";
     default:                 return NULL;
     }
 }
@@ -418,6 +420,19 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
             return;
         }
         sra->note_cmd_enabled = d0;
+        break;
+
+    /* ---- Reset to post-start defaults ---------------------------- */
+    case SX_RESET:
+        if (datalen != 0) {
+            char detail[64];
+            snprintf(detail, sizeof(detail),
+                     "unexpected data byte 0x%02X (expected none)",
+                     (unsigned)d0);
+            sx_error(sra, cmd, detail);
+            return;
+        }
+        sra_reset_to_initial(sra);
         break;
 
     /* ---- Unknown CMD: silently ignore ---------------------------- */

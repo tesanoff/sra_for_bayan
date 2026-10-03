@@ -168,6 +168,7 @@ struct SraCore {
     /* Style metadata */
     SRABYTE tempo, beat, il, ml, el;
     SRABYTE ml_a, ml_b;        /* middle lengths: Original (A), Variation (B) */
+    SRABYTE initial_tempo;     /* tempo as read from the style file; restored by Reset */
 
     /* Chord state */
     SRABYTE          chord_change;
@@ -272,6 +273,7 @@ void sra_lower_on(SraCore *sra);
 void sra_lower_off(SraCore *sra);
 void sra_prog_change(SraCore *sra, SRABYTE ch);
 void sra_reset(SraCore *sra, int full);
+void sra_reset_to_initial(SraCore *sra);
 
 /* sracore_engine.c */
 void sra_step(SraCore *sra);

@@ -161,6 +161,95 @@ void sra_prog_change(SraCore *sra, SRABYTE ch) {
 /* for live playing are left untouched.                                 */
 /* ------------------------------------------------------------------ */
 
+/* Bring the engine back to its post-start default state without
+   reloading the style. See patch_sysex_reset.py for the full list
+   of fields affected. Must be called from the same critical section
+   as sracore_step(). */
+void sra_reset_to_initial(SraCore *sra) {
+    int i;
+
+    /* 1. Stop playback cleanly if running. */
+    if (sra->start_f) {
+        sra_chord_off(sra);
+        sra->key_on_count = 0;
+        sra_lower_on(sra);
+        sra_all_note_off(sra);
+        if (sra->clock_f) sra_append(sra, 0xfc);
+        sra->start_f = 0;
+    }
+
+    /* 2. Clear voice table. */
+    for (i = 0; i < MAXVOICE; i++) sra->voice[i][0] = 0x00;
+    sra->voice_count = 0;
+    sra->bass_lock   = -1;
+
+    /* 3. Reset transport flags. */
+    sra->mode      = 0;
+    sra->var_f     = 0;
+    sra->sync_f    = 0;
+    sra->fill_f    = 0;
+    sra->ief       = 0;
+    sra->ief2      = 0;
+    sra->shift_f   = 0;
+    sra->func      = 0;
+    sra->fadeout_f = -1;
+
+    /* 4. Reset position. */
+    sra->session      = 1;   /* Original, as after a normal Start */
+    sra->session_time = 0;
+    sra->sty_index    = -1;
+    sra->a_time       = 0;
+    sra->b_time       = 0;
+    sra->clock3       = 0;
+
+    /* 5. Reset chord state. */
+    sra->chordd   = 0;
+    sra->bass     = 0;
+    sra->chord_k  = 0;
+    sra->chord_c  = 0;
+    sra->chord_name[0] = '\0';
+    {
+        static const signed char zero_voicing[12] = {0};
+        sra->chord_v = zero_voicing;
+    }
+    sra->key_change = 0;
+
+    /* 6. Reset key tracking. */
+    for (i = 0; i < 5; i++) {
+        sra->key_on[i][0] = 0;
+        sra->key_on[i][1] = 0;
+        sra->key_off[i]   = 0;
+    }
+    sra->key_on_count  = 0;
+    sra->key_off_count = -1;
+
+    /* 7. Reset toggles to defaults. */
+    sra->mbass_vf         = 1;
+    sra->acc_vf           = 1;
+    sra->acc_bass_vf      = 1;
+    sra->drum_vf          = 1;
+    sra->lower_vf         = 1;
+    sra->note_cmd_enabled = 1;
+
+    /* 8. Restore tempo from the style file (safe fallback: keep
+          current tempo if initial_tempo was never set). */
+    if (sra->initial_tempo >= 20 && sra->initial_tempo <= 250) {
+        sra->tempo = sra->initial_tempo;
+        sra_set_clock(sra);
+    }
+
+    /* 9. Force patch re-send on next use. */
+    for (i = 0; i < 16; i++) sra->prog[i][0] = 0xff;
+
+    /* 10. Send standard init messages (CC11/CC91/CC7, pitch-wheel,
+           default patches). Uses the same helper as Start. */
+    sra_reset(sra, 0);
+
+    /* 11. Notify the UI. */
+    if (sra->cb.on_chord) sra->cb.on_chord(sra, sra->cb.userdata);
+    if (sra->cb.on_tempo) sra->cb.on_tempo(sra, sra->cb.userdata);
+}
+
 void sra_reset(SraCore *sra, int full) {
     int i;
     SRABYTE m;
@@ -399,6 +488,9 @@ int sra_load_style(SraCore *sra, int style_num) {
         fclose(f);
         return 0;
     }
+
+    /* Remember the tempo from the style file for Reset. */
+    sra->initial_tempo = sra->tempo;
 
     /* Skip delta of the first body event.
        In v2, t_time comes from the Meta header, so this delta

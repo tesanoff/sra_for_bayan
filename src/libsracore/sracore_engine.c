@@ -587,9 +587,26 @@ void sra_step(SraCore *sra) {
             sra->session_time = 0;
             sra_lower_on(sra); sra->ief2 = 1;
         } else if (sra->session == 1 || sra->session == 3) {
+#ifdef SRA_DEBUG_VOICE
+            long _old_stime = sra->session_time;
+#endif
             sra->session_time = (sra->session_time + 1) %
                                 ((sra->session == 1) ? sra->ml_a
                                                      : sra->ml_b);
+            /* Wrap-around: last bar of section -> first bar of the same
+               section. NoteOff for melodic notes may live in Fill or
+               Ending, which are not played while looping on Original
+               (or Variation). Clear melodic voices to avoid hanging
+               notes. DRUM/LOWER/MBASS are left untouched. */
+            if (sra->session_time == 0) {
+#ifdef SRA_DEBUG_VOICE
+                DBG("=== LOOP: sess=%ld stime %ld -> 0 "
+                    "(ml_a=%d ml_b=%d) vc=%d ===\n",
+                    sra->session, _old_stime,
+                    (int)sra->ml_a, (int)sra->ml_b, sra->voice_count);
+#endif
+                sra_clear_voices_on_loop(sra);
+            }
         } else if (sra->session == 2 || sra->session == 4) {
             sra->session = 2 * sra->var_f + 1;
             sra->session_time = 0;

@@ -119,6 +119,59 @@ void sra_all_note_off(SraCore *sra) {
     sra->bass_lock = -1;
 }
 
+/* Снять melodic-голоса при зацикливании секции.
+   DRUM (ch=9), LOWER (ch=14), MBASS (ch=13) не трогаются.
+
+   Отправляет MIDI NoteOff для каждого снятого голоса, чтобы нота
+   заглушилась на синтезаторе (NoteOn был отправлен ранее), и удаляет
+   голос из voice[]. */
+void sra_clear_voices_on_loop(SraCore *sra) {
+    int i;
+    int cleared = 0;
+
+#ifdef SRA_DEBUG_VOICE
+    int _before = sra->voice_count;
+    DBG("clear_voices_on_loop: before=%d\n", _before);
+#endif
+
+    for (i = 0; i < MAXVOICE; i++) {
+        SRABYTE cmd  = sra->voice[i][0];
+        SRABYTE ch   = cmd & 0x0f;
+
+        if (cmd == 0x00) continue;
+
+        /* Skip DRUM, LOWER, MBASS — their voices must keep sounding. */
+        if (ch == DRUM || ch == LOWER || ch == MBASS) {
+#ifdef SRA_DEBUG_VOICE
+            DBG("  keep  voice[%d] ch=%d orig=%d trans=%d vel=%d "
+                "(protected)\n",
+                i, ch, sra->voice[i][1], sra->voice[i][2], sra->voice[i][3]);
+#endif
+            continue;
+        }
+
+        /* Melodic voice: send MIDI NoteOff and drop from voice[]. */
+#ifdef SRA_DEBUG_VOICE
+        DBG("  clear voice[%d] ch=%d orig=%d trans=%d vel=%d\n",
+            i, ch, sra->voice[i][1], sra->voice[i][2], sra->voice[i][3]);
+#endif
+        sra_append(sra, cmd);
+        sra_append(sra, sra->voice[i][2]);   /* trans_note */
+        sra_append(sra, 0x00);               /* NoteOff */
+
+        sra->voice[i][0] = 0x00;
+        sra->voice_count--;
+        cleared++;
+    }
+
+#ifdef SRA_DEBUG_VOICE
+    DBG("clear_voices_on_loop: cleared=%d after=%d (was %d)\n",
+        cleared, sra->voice_count, _before);
+#else
+    (void)cleared;
+#endif
+}
+
 void sra_lower_on(SraCore *sra) {
     sra_append(sra, 0xb0 | LOWER);
     sra_append(sra, 0x0b);

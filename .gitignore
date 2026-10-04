@@ -5,6 +5,7 @@ build/
 *.so
 *.exe
 !build/srawin.exe
+!build/run_me.sh
 
 # Local test files
 build/style*.mid

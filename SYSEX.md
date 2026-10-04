@@ -868,9 +868,7 @@ deprecated Note-On control.
 | SysEx | Note-On | Notes |
 |-------|---------|-------|
 | `01` Start | `Bb7` (94) | Same effect. |
-| `02` Stop | `Bb7` (94) | There is no separate Note-On Stop
-  command: Stop is the **same code path** as Start (toggle).
-  Pressing `Bb7` again stops the arranger. |
+| `02` Stop | `Bb7` (94) | There is no separate Note-On Stop command:<BR> Stop is the **same code path** as Start (toggle).<BR>  Pressing `Bb7` again stops the arranger. |
 | `03` Sync Start | `Shift + Bb7` (96+94) | Same effect. |
 | `04` Fill to Original | `B7` (95) | Same effect. |
 | `05` Fill to Variation | `A7` (93) | Same effect. |

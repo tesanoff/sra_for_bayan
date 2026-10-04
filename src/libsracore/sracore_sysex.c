@@ -31,6 +31,7 @@
 #define SX_CHANGE_MODE      0x0E
 #define SX_TO_ORIGINAL      0x0F
 #define SX_TO_VARIATION     0x10
+#define SX_STARTSTOP        0x11
 #define SX_TOGGLE_LOWER     0x53
 #define SX_LOAD_STYLE       0x20
 #define SX_NOTE_CMD_ENABLE  0x50
@@ -61,6 +62,7 @@ static const char *sysex_cmd_name(SRABYTE cmd) {
     case SX_CHANGE_MODE:     return "Change Mode";
     case SX_TO_ORIGINAL:     return "To Original";
     case SX_TO_VARIATION:    return "To Variation";
+    case SX_STARTSTOP:       return "Start/Stop";
     case SX_TOGGLE_LOWER:    return "Toggle Lower";
     case SX_LOAD_STYLE:      return "Load Style";
     case SX_NOTE_CMD_ENABLE: return "Enable/disable Note-On";
@@ -250,6 +252,24 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
             return;
         }
         sra->var_f = 1;
+        break;
+
+    /* ---- Start/Stop toggle --------------------------------------- */
+    case SX_STARTSTOP:
+        if (datalen != 0) {
+            char detail[64];
+            snprintf(detail, sizeof(detail),
+                     "unexpected data byte 0x%02X (expected none)",
+                     (unsigned)d0);
+            sx_error(sra, cmd, detail);
+            return;
+        }
+        /* Same code path as Note-On Bb (CMD_START):
+           start_f = 0 -> start, start_f = 1 -> stop.
+           shift_f = 0 -> normal start, not sync. */
+        sra->msg = (SRABYTE)(CMD_START + sra->offset);
+        sra->shift_f = 0;
+        sra_check_com(sra);
         break;
 
     /* ---- Tempo ---------------------------------------------------- */

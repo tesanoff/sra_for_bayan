@@ -317,6 +317,7 @@ F0 7D <CMD> [<DATA...>] F7
 | `0E` | Change Mode | — |
 | `0F` | To Original (no fill) | — |
 | `10` | To Variation (no fill) | — |
+| `11` | Start/Stop (toggle) | — |
 | `20` | Load Style | style number (0–127) |
 | `50` | Enable / disable Note-On commands | `00` = off, `01` = on |
 | `51` | Set chord channel | channel, **0-based** (0–15) |

@@ -154,6 +154,7 @@ Channels **0–5** (UI 1–6) are free for live playing.
 | `0E` | Change Mode | — |
 | `0F` | To Original (no fill) | — |
 | `10` | To Variation (no fill) | — |
+| `11` | Start/Stop (toggle) | — |
 | `20` | Load Style | style number (0–127) |
 | `50` | Enable / disable Note-On commands | `00` = off, `01` = on |
 | `51` | Set chord channel | channel, 0-based (0–15) |
@@ -217,6 +218,28 @@ This is the SysEx equivalent of the Note-On `Shift + Bb7` gesture.
 Data: none.
 
 **Example:** `F0 7D 03 F7`
+
+---
+
+### `11` — Start/Stop (toggle)
+
+Toggles playback on and off — a single command that behaves like
+the Note-On `Bb` (`CMD_START`) key.
+
+- **If stopped (`start_f == 0`):** starts playback, exactly like
+  command `01`.  The starting section is set from `ief` / `var_f`
+  (Intro if `ief` is set, otherwise Original or Variation).
+- **If running (`start_f == 1`):** stops playback, exactly like
+  command `02`.  All sounding notes are released.
+- **During Ending:** the command interrupts the Ending and stops,
+  same as `CMD_START`.
+
+This is equivalent to sending `01` and `02` alternately, but the
+sender does not need to track the current state.
+
+Data: none.
+
+**Example:** `F0 7D 11 F7`
 
 ---
 
@@ -655,6 +678,7 @@ the exact problem — including the offending byte, if any.
 | `CMD 0x0E Change Mode: unexpected data byte 0xXX (expected none)` | Change Mode with unexpected data |
 | `CMD 0x0F To Original: unexpected data byte 0xXX (expected none)` | To Original with unexpected data |
 | `CMD 0x10 To Variation: unexpected data byte 0xXX (expected none)` | To Variation with unexpected data |
+| `CMD 0x11 Start/Stop: unexpected data byte 0xXX (expected none)` | Start/Stop with unexpected data |
 | `CMD 0x53 Toggle Lower: unexpected data byte 0xXX (expected none)` | Toggle Lower with unexpected data |
 | `CMD 0x54 Reset: unexpected data byte 0xXX (expected none)` | Reset with unexpected data |
 | `CMD 0x20 Load Style: missing data byte (expected 1, got 0)` | Load Style without a style number |
@@ -861,6 +885,7 @@ deprecated Note-On control.
 | `0E` Change Mode | `Shift + G7` (96+91) | Same effect. |
 | `0F` To Original | `Shift + B7` (96+95) | Same effect. |
 | `10` To Variation | `Shift + A7` (96+93) | Same effect. |
+| `11` Start/Stop | `Bb7` (94) | Same effect: toggle. |
 | `20` Load Style | — | SysEx only. |
 | `50` Enable/disable Note-On | — | SysEx only. |
 | `51` Set chord channel | — | SysEx only. |

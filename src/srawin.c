@@ -29,6 +29,23 @@ static int center_pos(UINT window_size, UINT screen_size) {
 /* ---- SysEx callback (called from midi_device_win.c) ---- */
 
 static void on_sysex(const unsigned char *data, int len) {
+    /* Windows MM_MIM_LONGDATA delivers the raw SysEx payload WITH
+       the F0 / F7 framing bytes.  sracore_sysex_in(), by contrast,
+       expects them already stripped (as the Linux ALSA reader does).
+
+       Strip F0 at the start and F7 at the end before forwarding. */
+    if (len >= 2 && data[0] == 0xF0 && data[len - 1] == 0xF7) {
+        data++;
+        len -= 2;
+    } else if (len >= 1 && data[0] == 0xF0) {
+        data++;
+        len -= 1;
+    } else if (len >= 1 && data[len - 1] == 0xF7) {
+        len -= 1;
+    }
+
+    if (len <= 0) return;
+
     EnterCriticalSection(&g_engine.cs);
     sracore_sysex_in(g_engine.sra, (const SRABYTE *)data, len);
     LeaveCriticalSection(&g_engine.cs);

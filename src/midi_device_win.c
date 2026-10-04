@@ -115,34 +115,61 @@ void midi_device_win_set_sysex_cb(void (*cb)(const unsigned char *data,
 }
 
 static void sysex_prepare(HMIDIIN h) {
+    MMRESULT mr;
+
     if (sysex_prepared) return;
+
     memset(&sysex_hdr, 0, sizeof(sysex_hdr));
     sysex_hdr.lpData         = sysex_buf;
     sysex_hdr.dwBufferLength = SRA_SYSEX_BUF;
-    if (midiInPrepareHeader(h, &sysex_hdr, sizeof(sysex_hdr))
-            != MMSYSERR_NOERROR)
+
+    mr = midiInPrepareHeader(h, &sysex_hdr, sizeof(sysex_hdr));
+    if (mr != MMSYSERR_NOERROR) {
+        char msg[128];
+        sprintf(msg, "midiInPrepareHeader failed: %u", (unsigned)mr);
+        MessageBox(0, msg, "SRA SysEx", MB_OK | MB_ICONERROR);
         return;
-    if (midiInAddBuffer(h, &sysex_hdr, sizeof(sysex_hdr))
-            != MMSYSERR_NOERROR) {
+    }
+
+    mr = midiInAddBuffer(h, &sysex_hdr, sizeof(sysex_hdr));
+    if (mr != MMSYSERR_NOERROR) {
+        char msg[128];
+        sprintf(msg, "midiInAddBuffer failed: %u", (unsigned)mr);
+        MessageBox(0, msg, "SRA SysEx", MB_OK | MB_ICONERROR);
         midiInUnprepareHeader(h, &sysex_hdr, sizeof(sysex_hdr));
         return;
     }
+
     sysex_prepared = 1;
     sysex_queued   = 1;
 }
 
 void midi_device_win_handle_longdata(MidiDevice *dev, LONG lParam) {
     MIDIHDR *hdr = (MIDIHDR *)lParam;
+    MMRESULT mr;
+
     if (!hdr || !dev || !dev->h_in) return;
 
     if (hdr->dwBytesRecorded > 0 && sysex_cb)
         sysex_cb((const unsigned char *)hdr->lpData,
                  (int)hdr->dwBytesRecorded);
 
-    /* Re-queue the same buffer for the next SysEx message. */
-    if (hdr->dwFlags & MHDR_DONE || hdr->dwFlags & MHDR_PREPARED) {
-        midiInAddBuffer(dev->h_in, hdr, sizeof(MIDIHDR));
-        sysex_queued = 1;
+    /* Re-queue the same buffer for the next SysEx message.
+       MHDR_DONE must be cleared first, otherwise midiInAddBuffer
+       returns MIDIERR_STILLPLAYING and the buffer is NOT re-queued
+       — after which no further MM_MIM_LONGDATA arrives. */
+    if (hdr->dwFlags & MHDR_DONE) {
+        hdr->dwFlags &= ~MHDR_DONE;
+        mr = midiInAddBuffer(dev->h_in, hdr, sizeof(MIDIHDR));
+        if (mr != MMSYSERR_NOERROR) {
+            char msg[128];
+            sprintf(msg, "midiInAddBuffer (re-queue) failed: %u",
+                    (unsigned)mr);
+            MessageBox(0, msg, "SRA SysEx", MB_OK | MB_ICONERROR);
+            sysex_queued = 0;
+        } else {
+            sysex_queued = 1;
+        }
     } else {
         sysex_queued = 0;
     }

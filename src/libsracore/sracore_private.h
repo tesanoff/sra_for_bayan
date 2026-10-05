@@ -184,6 +184,12 @@ struct SraCore {
     /* Part on/off flags */
     SRABYTE mbass_vf, acc_vf, acc_bass_vf, drum_vf, lower_vf;
 
+    /* M.Bass octave shift: 0 = as played, -12 = one octave down,
+       -24 = two octaves down.  Set via SysEx 0x55 or config; not
+       touched by Reset (it is a configuration parameter, not
+       runtime state). */
+    signed char mbass_oct;
+
     /* Master volume for arranger-owned channels (CC7), 0..127.
        Set via SysEx CMD 0x52; used by sra_reset() and applied
        immediately when the command is received. */

@@ -24,6 +24,7 @@ SraCore *sracore_create(void) {
     sra->lower_vf      = 1;
     sra->note_cmd_enabled = 1;   /* Note-On commands active by default */
     sra->master_vol       = 100; /* CC7 default, matches sra_reset() */
+    sra->mbass_oct        = -12; /* default: one octave down */
     sra->chord_ch         = 2;   /* default: channel 3 (0-based) */
     sra->chord_debounce   = 0;
     strcpy(sra->styles_dir, ".");
@@ -53,6 +54,12 @@ void sracore_set_chord_channel(SraCore *sra, int chord_ch) {
 
 void sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb) {
     sra->cb = *cb;
+}
+
+void sracore_set_mbass_octave(SraCore *sra, int value) {
+    if (!sra) return;
+    if (value < 0 || value > 2) return;
+    sra->mbass_oct = (signed char)(-12 * value);
 }
 
 void sracore_set_logging(SraCore *sra, int debug, int is_daemon) {

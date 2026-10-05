@@ -15,9 +15,10 @@
 
 void sra_config_defaults(SraConfig *cfg) {
     memset(cfg, 0, sizeof(*cfg));
-    cfg->chord_ch    = 3;                 /* 1-based: channel 3 */
-    cfg->ctrl_offset = 0;
-    cfg->debug       = 0;
+    cfg->chord_ch      = 3;               /* 1-based: channel 3 */
+    cfg->ctrl_offset   = 0;
+    cfg->debug         = 0;
+    cfg->mbass_octave  = 1;               /* default: one octave down */
 
 #ifdef _WIN32
     /* Default config path on Windows: %APPDATA%\sra\sra.conf.
@@ -170,6 +171,21 @@ int sra_config_parse_args(SraConfig *cfg, int argc, char **argv) {
             cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
             cfg->has_styles_dir = 1;
         }
+        else if (strcmp(a, "--mbass-octave") == 0) {
+            if (++i >= argc) {
+                fprintf(stderr, "sra: --mbass-octave requires an argument\n");
+                return 1;
+            }
+            if (parse_int(argv[i], &cfg->mbass_octave) != 0) {
+                fprintf(stderr, "sra: --mbass-octave must be an integer\n");
+                return 1;
+            }
+            if (cfg->mbass_octave < 0 || cfg->mbass_octave > 2) {
+                fprintf(stderr, "sra: --mbass-octave must be 0, 1, or 2\n");
+                return 1;
+            }
+            cfg->has_mbass_octave = 1;
+        }
         else if (strcmp(a, "--debug") == 0) {
             cfg->debug = 1;
         }
@@ -277,6 +293,24 @@ int sra_config_load(SraConfig *cfg) {
                 strncpy(cfg->styles_dir, val, sizeof(cfg->styles_dir) - 1);
                 cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
             }
+        }
+        else if (strcmp(key, "mbass_octave") == 0) {
+            int v;
+            if (parse_int(val, &v) != 0) {
+                fprintf(stderr,
+                        "sra: %s:%d: mbass_octave must be an integer\n",
+                        cfg->config_path, lineno);
+                fclose(f);
+                return 1;
+            }
+            if (v < 0 || v > 2) {
+                fprintf(stderr,
+                        "sra: %s:%d: mbass_octave must be 0, 1, or 2\n",
+                        cfg->config_path, lineno);
+                fclose(f);
+                return 1;
+            }
+            if (!cfg->has_mbass_octave) cfg->mbass_octave = v;
         }
         else {
             fprintf(stderr, "sra: %s:%d: unknown key '%s'\n",

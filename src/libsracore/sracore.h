@@ -78,6 +78,13 @@ void     sracore_set_chord_channel(SraCore *sra, int chord_ch);
 /* Install all four callbacks at once. */
 void     sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb);
 
+/* Set the octave shift applied to the M.Bass note.
+   value: 0 = as played, 1 = one octave down (default),
+          2 = two octaves down.
+   Must be called before sracore_init(); a call after init is
+   silently ignored.  Values outside 0..2 are ignored. */
+void     sracore_set_mbass_octave(SraCore *sra, int value);
+
 /* Enable or disable debug logging, and select the log
    destination.
    debug:     1 = log every SysEx command (and other debug events)

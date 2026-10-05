@@ -161,6 +161,7 @@ Channels **0–5** (UI 1–6) are free for live playing.
 | `52` | Master Volume | volume (0–127) |
 | `53` | Toggle Lower | — |
 | `54` | Reset | — |
+| `55` | M.Bass Octave | `00` = as played, `01` = one octave down, `02` = two octaves down |
 
 Commands are described in detail below, grouped by function.
 
@@ -689,6 +690,8 @@ the exact problem — including the offending byte, if any.
 | `CMD 0x51 Set Chord Ch: data 0xXX out of range (0x00..0x0F)` | Channel > 15 |
 | `CMD 0x52 Master Volume: missing data byte (expected 1, got 0)` | Master Volume without a value |
 | `CMD 0x52 Master Volume: data 0xXX out of range (0x00..0x7F)` | Volume > 127 |
+| `CMD 0x55 M.Bass Octave: missing data byte (expected 1, got 0)` | M.Bass Octave without a value |
+| `CMD 0x55 M.Bass Octave: data 0xXX out of range (0x00..0x02)` | M.Bass Octave value > 2 |
 
 > **Note.**  The exact data byte is shown as `0xXX` in the table;
 > the engine prints the actual value (e.g. `0x01`, `0xFF`).
@@ -890,6 +893,7 @@ deprecated Note-On control.
 | `52` Master Volume | — | SysEx only. |
 | `53` Toggle Lower | — | SysEx only. |
 | `54` Reset | — | SysEx only. |
+| `55` M.Bass Octave | — | SysEx only. |
 
 Note-On commands can be disabled with `50 00`, but SysEx commands
 always work.

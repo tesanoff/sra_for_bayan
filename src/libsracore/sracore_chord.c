@@ -112,8 +112,11 @@ int sra_voice_find(SraCore *sra, SRABYTE cmd, SRABYTE orig) {
 void sra_chord_on(SraCore *sra) {
     int i;
     if (!sra->start_f && sra->mode && !sra->sync_f) {
+        int note = (int)sra->key_on[0][0] - sra->offset3 + sra->mbass_oct;
+        if (note < 0)   note = 0;
+        if (note > 127) note = 127;
         sra_append(sra, 0x90 | MBASS);
-        sra_append(sra, sra->key_on[0][0] - sra->offset3);
+        sra_append(sra, (SRABYTE)note);
         sra_append(sra, sra->key_on[0][1] * sra->mbass_vf);
     }
     for (i = 0; i < sra->key_on_count; i++) {

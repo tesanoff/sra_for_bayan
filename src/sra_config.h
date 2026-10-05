@@ -21,6 +21,7 @@ typedef struct {
     int  debug;                 /* 1 = debug logging enabled            */
     char styles_dir[512];       /* directory with style*.mid files      */
     char config_path[256];      /* path to config file                   */
+    int  mbass_octave;          /* M.Bass octave: 0, 1, or 2 (default 1) */
 
     /* "set by argv" flags — used so the config file does not
        overwrite values explicitly given on the command line. */
@@ -29,6 +30,7 @@ typedef struct {
     int  has_chord_ch;
     int  has_ctrl_offset;
     int  has_styles_dir;
+    int  has_mbass_octave;
 } SraConfig;
 
 /* Initialise cfg with defaults. */

@@ -97,6 +97,9 @@ static int run_daemon(SraConfig *cfg) {
     if (cfg->has_styles_dir)
         sracore_set_styles_dir(g_engine.sra, cfg->styles_dir);
 
+    if (cfg->has_mbass_octave)
+        sracore_set_mbass_octave(g_engine.sra, cfg->mbass_octave);
+
     err = midi_device_open(&g_midi, NULL);
     if (err) {
         syslog(LOG_ERR, "MIDI open error %d", err);

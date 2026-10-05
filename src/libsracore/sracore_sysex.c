@@ -38,6 +38,7 @@
 #define SX_SET_CHORD_CH     0x51
 #define SX_MASTER_VOLUME    0x52
 #define SX_RESET            0x54
+#define SX_MBASS_OCTAVE     0x55
 
 /* ------------------------------------------------------------------ */
 /* Command name table                                                   */
@@ -69,6 +70,7 @@ static const char *sysex_cmd_name(SRABYTE cmd) {
     case SX_SET_CHORD_CH:    return "Set Chord Ch";
     case SX_MASTER_VOLUME:   return "Master Volume";
     case SX_RESET:           return "Reset";
+    case SX_MBASS_OCTAVE:    return "M.Bass Octave";
     default:                 return NULL;
     }
 }
@@ -453,6 +455,26 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
             return;
         }
         sra_reset_to_initial(sra);
+        break;
+
+    /* ---- M.Bass octave shift ------------------------------------- */
+    case SX_MBASS_OCTAVE:
+        if (datalen != 1) {
+            char detail[64];
+            snprintf(detail, sizeof(detail),
+                     "missing data byte (expected 1, got %d)", datalen);
+            sx_error(sra, cmd, detail);
+            return;
+        }
+        if (d0 > 2) {
+            char detail[64];
+            snprintf(detail, sizeof(detail),
+                     "data 0x%02X out of range (0x00..0x02)",
+                     (unsigned)d0);
+            sx_error(sra, cmd, detail);
+            return;
+        }
+        sra->mbass_oct = (signed char)(-12 * (int)d0);
         break;
 
     /* ---- Unknown CMD: silently ignore ---------------------------- */

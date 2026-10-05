@@ -324,6 +324,7 @@ F0 7D <CMD> [<DATA...>] F7
 | `52` | Master Volume | volume (0–127) |
 | `53` | Toggle Lower | — |
 | `54` | Reset | — |
+| `55` | M.Bass Octave | `00` = as played, `01` = one octave down, `02` = two octaves down |
 
 > **Full command reference:** see [SYSEX.md](SYSEX.md) for a
 > detailed description of every command — behaviour, timing, side

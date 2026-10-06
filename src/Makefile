@@ -179,7 +179,10 @@ win: $(WIN_TARGET)
 
 $(WIN_TARGET): $(WIN_OBJS) $(LIBDIR)/libsracore.a.win | $(OUTDIR)
 	@echo "  LD(win)  $@"
-	$(WIN_CC) -mwindows $(WIN_OBJS) $(LIBDIR)/libsracore.a.win -lwinmm -o $@
+	$(WIN_CC) -mwindows -Wl,--no-insert-timestamp \
+	    $(WIN_OBJS) $(LIBDIR)/libsracore.a.win -lwinmm -o $@
+
+#	$(WIN_CC) -mwindows $(WIN_OBJS) $(LIBDIR)/libsracore.a.win -lwinmm -o $@
 
 %.win.o: %.c
 	@echo "  CC(win)  $<"

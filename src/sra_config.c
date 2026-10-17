@@ -292,6 +292,7 @@ int sra_config_load(SraConfig *cfg) {
             if (!cfg->has_styles_dir) {
                 strncpy(cfg->styles_dir, val, sizeof(cfg->styles_dir) - 1);
                 cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
+		cfg->has_styles_dir = 1;
             }
         }
         else if (strcmp(key, "mbass_octave") == 0) {
@@ -310,7 +311,10 @@ int sra_config_load(SraConfig *cfg) {
                 fclose(f);
                 return 1;
             }
-            if (!cfg->has_mbass_octave) cfg->mbass_octave = v;
+            if (!cfg->has_mbass_octave) {
+                cfg->mbass_octave = v;
+		cfg->has_mbass_octave = 1;
+	    }
         }
         else {
             fprintf(stderr, "sra: %s:%d: unknown key '%s'\n",

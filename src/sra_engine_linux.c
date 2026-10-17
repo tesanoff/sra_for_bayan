@@ -55,6 +55,18 @@ static void *midi_in_thread_func(void *arg) {
     int            in_sysex   = 0;
     int            sysex_over = 0;  /* 1 = overflowed, discard until F7 */
 
+    /* Request FIFO scheduling (requires CAP_SYS_NICE or root), same
+       as engine_thread_func.  Without this, midi_in competes with
+       background tasks (systemd, journald, network) for CPU, and on
+       low-power boards (Raspberry Pi 2 W etc.) it may be preempted
+       long enough to lose incoming notes — causing missed chords,
+       wrong chord recognition, and delayed start. */
+    {
+        struct sched_param sp;
+        sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
+        pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp);
+    }
+
     /* Non-blocking mode: we poll with a timeout so that the thread can
        notice a shutdown request even when no MIDI data is arriving. */
     snd_rawmidi_nonblock(eng->midi->h_in, 1);
@@ -68,7 +80,11 @@ static void *midi_in_thread_func(void *arg) {
         rc = snd_rawmidi_poll_descriptors(eng->midi->h_in, &pfd, 1);
         if (rc != 1) { usleep(1000); continue; }
 
-        rc = poll(&pfd, 1, 100);
+        /* 20 ms: at 31250 baud this covers ~60 MIDI bytes — enough
+           for a full chord plus margin — while keeping the thread
+           responsive to eng->running changes.  The previous 100 ms
+           timeout made the thread sleep too long when preempted. */
+        rc = poll(&pfd, 1, 20);
         if (rc <= 0) continue;               /* timeout or EINTR */
 
         /* Re-check the running flag before touching h_in: the main

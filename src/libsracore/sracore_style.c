@@ -579,6 +579,16 @@ int sra_load_style(SraCore *sra, int style_num) {
             sra->last_sty_msg >= (SRABYTE)0xe0)
             sra->style_buf[++index_n] = (SRABYTE)fgetc(f);
 
+        if (sra->last_sty_msg == 0xC0 || (sra->last_sty_msg & 0xF0) == 0xC0) {
+            SRABYTE ch = sra->last_sty_msg & 0x0F;
+            sra->prog_t[ch][2] = sra->style_buf[index_n];
+        } else if (sra->last_sty_msg == 0xB0 || (sra->last_sty_msg & 0xF0) == 0xB0) {
+            SRABYTE ch = sra->last_sty_msg & 0x0F;
+            SRABYTE cc = sra->style_buf[index_n - 1]; // номер CC
+            if (cc == 0) sra->prog_t[ch][0] = sra->style_buf[index_n];
+            else if (cc == 32) sra->prog_t[ch][1] = sra->style_buf[index_n];
+        }
+
         if (index_n > (STYLESIZE - 10)) {
             fclose(f); sra_do_error(sra, 7); return 0;
         }
@@ -727,5 +737,57 @@ int sra_load_style(SraCore *sra, int style_num) {
     sra->voice_count = 0;
     sra_set_clock(sra);
     sra->var_f = sra->sync_f = sra->ief = 0;
+
+    if (sra->force_pc_on_load) {
+        int ch, j;
+        int found = 0;
+        SRABYTE sysex[128];
+        int len = 0;
+        
+        sysex[len++] = 0xF0;
+        sysex[len++] = 0x7D;
+        sysex[len++] = 0x60; /* Custom CMD: Pin Presets */
+
+        for (ch = 0; ch < 16; ch++) {
+            if (sra->prog_t[ch][2] != 0xff) {
+                int bank = (sra->prog_t[ch][0] << 7) | sra->prog_t[ch][1];
+                int preset = sra->prog_t[ch][2];
+                int duplicate = 0;
+                
+                /* Проверяем, не отправляли ли мы уже этот пресет */
+                for (j = 0; j < len - 3; j += 3) {
+                    int b = (sysex[j+3] << 7) | sysex[j+4];
+                    int p = sysex[j+5];
+                    if (b == bank && p == preset) {
+                        duplicate = 1;
+                        break;
+                    }
+                }
+                
+                if (!duplicate && len + 3 < (int)sizeof(sysex) - 1) {
+                    sysex[len++] = bank >> 7;
+                    sysex[len++] = bank & 0x7F;
+                    sysex[len++] = preset;
+                    found = 1;
+                }
+            }
+        }
+        
+        if (found) {
+            int i;
+            sysex[len++] = 0xF7;
+            for (i = 0; i < len; i++) {
+                sra_append(sra, sysex[i]);
+            }
+        }
+        
+        /* Reset PC cache so SRA will send real PCs when notes start */
+        for (ch = 0; ch < 16; ch++) {
+            sra->prog[ch][0] = 0xff;
+            sra->prog[ch][1] = 0xff;
+            sra->prog[ch][2] = 0xff;
+        }
+    }
+
     return 1;
 }

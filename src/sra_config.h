@@ -31,6 +31,8 @@ typedef struct {
     int  has_ctrl_offset;
     int  has_styles_dir;
     int  has_mbass_octave;
+    int  force_pc_on_load;
+    int  has_force_pc_on_load;
 } SraConfig;
 
 /* Initialise cfg with defaults. */

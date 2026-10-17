@@ -19,6 +19,7 @@ void sra_config_defaults(SraConfig *cfg) {
     cfg->ctrl_offset   = 0;
     cfg->debug         = 0;
     cfg->mbass_octave  = 1;               /* default: one octave down */
+    cfg->force_pc_on_load = 0;            /* default: off */
 
 #ifdef _WIN32
     /* Default config path on Windows: %APPDATA%\sra\sra.conf.
@@ -294,6 +295,16 @@ int sra_config_load(SraConfig *cfg) {
                 cfg->styles_dir[sizeof(cfg->styles_dir) - 1] = '\0';
 		cfg->has_styles_dir = 1;
             }
+        }
+        else if (strcmp(key, "force_pc_on_load") == 0) {
+            int v;
+            if (parse_int(val, &v) != 0 || (v != 0 && v != 1)) {
+                fprintf(stderr, "sra: %s:%d: force_pc_on_load must be 0 or 1\n",
+                        cfg->config_path, lineno);
+                fclose(f); return 1;
+            }
+            cfg->force_pc_on_load = v;
+            cfg->has_force_pc_on_load = 1;
         }
         else if (strcmp(key, "mbass_octave") == 0) {
             int v;

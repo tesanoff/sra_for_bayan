@@ -190,6 +190,9 @@ struct SraCore {
        runtime state). */
     signed char mbass_oct;
 
+    /* 1 = send CC0/PC for all used channels on style load. */
+    int force_pc_on_load;
+
     /* Master volume for arranger-owned channels (CC7), 0..127.
        Set via SysEx CMD 0x52; used by sra_reset() and applied
        immediately when the command is received. */

@@ -85,6 +85,10 @@ void     sracore_set_callbacks(SraCore *sra, const SraCallbacks *cb);
    silently ignored.  Values outside 0..2 are ignored. */
 void     sracore_set_mbass_octave(SraCore *sra, int value);
 
+/* Set whether to send CC0/Program Change for all channels used by
+   the style immediately upon loading it. */
+void     sracore_set_force_pc(SraCore *sra, int enable);
+
 /* Enable or disable debug logging, and select the log
    destination.
    debug:     1 = log every SysEx command (and other debug events)

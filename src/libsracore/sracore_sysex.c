@@ -454,6 +454,16 @@ void sra_sysex_dispatch(SraCore *sra, SRABYTE cmd,
             sx_error(sra, cmd, detail);
             return;
         }
+
+        /* Отправляем пустой список для снятия пиннинга в fs_launcher.
+           Только если включена опция force_pc_on_load. */
+        if (sra->force_pc_on_load) {
+            sra_append(sra, 0xF0);
+            sra_append(sra, 0x7D);
+            sra_append(sra, 0x60);
+            sra_append(sra, 0xF7);
+        }
+
         sra_reset_to_initial(sra);
         break;
 

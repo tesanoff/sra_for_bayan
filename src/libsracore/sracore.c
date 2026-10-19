@@ -62,6 +62,11 @@ void sracore_set_mbass_octave(SraCore *sra, int value) {
     sra->mbass_oct = (signed char)(-12 * value);
 }
 
+void sracore_set_force_pc(SraCore *sra, int enable) {
+    if (!sra) return;
+    sra->force_pc_on_load = (enable != 0);
+}
+
 void sracore_set_logging(SraCore *sra, int debug, int is_daemon) {
     if (!sra) return;
     sra->debug     = debug     ? 1 : 0;
